@@ -23,9 +23,11 @@ const Chat = () => {
     try {
       // Get user's namespace
       const namespace = getUserNamespace();
+      console.log('Using namespace:', namespace);
       
-      // Query Pinecone for relevant document chunks
+      // Query Pinecone
       const searchResults = await queryPinecone(input, namespace);
+      console.log('Search results:', searchResults);
       
       // Format context from search results
       const context = searchResults.matches
@@ -67,7 +69,7 @@ const Chat = () => {
       console.error('Chat error:', error);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'Sorry, I encountered an error processing your request.' 
+        content: 'Sorry, I encountered an error connecting to the database. Please try again later.' 
       }]);
     } finally {
       setIsLoading(false);
