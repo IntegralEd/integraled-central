@@ -3,12 +3,18 @@ import { getConfig } from './config';
 export const queryPinecone = async (query, userNamespace) => {
   try {
     const config = await getConfig();
-    const pineconeUrl = `${config.pinecone_url.trim()}/query`;
+    console.log('Pinecone config:', {
+      url: config.pinecone_url.trim(),
+      index: config.PINECONE_INDEX_NAME
+    });
+
+    // Construct proper URL with index name
+    const pineconeUrl = `${config.pinecone_url.trim()}/${config.PINECONE_INDEX_NAME}/query`;
+    console.log('Attempting Pinecone query at:', pineconeUrl);
     
     // Query both default and user namespaces
-    const [defaultResults, userResults] = await Promise.all([
-      // Query default namespace
-      fetch(pineconeUrl, {
+    try {
+      const defaultResponse = await fetch(pineconeUrl, {
         method: 'POST',
         headers: {
           'Api-Key': config.PINECONE_API_KEY,
@@ -20,10 +26,13 @@ export const queryPinecone = async (query, userNamespace) => {
           includeMetadata: true,
           vector: query,
         })
-      }).then(res => res.json()),
+      });
       
-      // Query user namespace
-      fetch(pineconeUrl, {
+      console.log('Default namespace response:', defaultResponse.status);
+      const defaultResults = await defaultResponse.json();
+      console.log('Default results:', defaultResults);
+
+      const userResponse = await fetch(pineconeUrl, {
         method: 'POST',
         headers: {
           'Api-Key': config.PINECONE_API_KEY,
@@ -31,26 +40,38 @@ export const queryPinecone = async (query, userNamespace) => {
         },
         body: JSON.stringify({
           namespace: userNamespace,
-          topK: 2,  // Fewer results from personal namespace
+          topK: 2,
           includeMetadata: true,
           vector: query,
         })
-      }).then(res => res.json()).catch(() => ({ matches: [] })) // Gracefully handle missing namespace
-    ]);
+      });
+      
+      console.log('User namespace response:', userResponse.status);
+      const userResults = await userResponse.json();
+      console.log('User results:', userResults);
 
-    // Combine and deduplicate results
-    const allMatches = [
-      ...(defaultResults.matches || []),
-      ...(userResults.matches || [])
-    ];
+      // Combine and deduplicate results
+      const allMatches = [
+        ...(defaultResults.matches || []),
+        ...(userResults.matches || [])
+      ];
 
-    return {
-      matches: allMatches,
-      namespaces: {
-        default: defaultResults.matches?.length || 0,
-        user: userResults.matches?.length || 0
-      }
-    };
+      return {
+        matches: allMatches,
+        namespaces: {
+          default: defaultResults.matches?.length || 0,
+          user: userResults.matches?.length || 0
+        }
+      };
+
+    } catch (fetchError) {
+      console.error('Fetch error details:', {
+        message: fetchError.message,
+        stack: fetchError.stack,
+        url: pineconeUrl
+      });
+      throw fetchError;
+    }
 
   } catch (error) {
     console.error('Pinecone query error:', error);
