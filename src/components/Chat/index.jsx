@@ -22,7 +22,7 @@ const Chat = () => {
 
   return (
     <div className="chat-container">
-      <h3>Chat Interface (Mounted)</h3>
+      <h3>Chat Interface</h3>
       <div className="message-list">
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.role}`}>
@@ -42,23 +42,22 @@ const Chat = () => {
   );
 };
 
-// Explicitly add to window
-window.RAGChat = {
-  Chat,
-  mount: () => {
-    console.log('Mount function called');
-    const root = document.getElementById('rag-chat-root');
-    if (root) {
-      console.log('Found root element, mounting...');
-      ReactDOM.render(<Chat />, root);
-      console.log('Mount complete');
-      return true;
-    }
-    console.log('Root element not found');
-    return false;
+// Create the mount function first
+const mountChat = () => {
+  const root = document.getElementById('rag-chat-root');
+  if (root) {
+    ReactDOM.render(<Chat />, root);
+    return true;
   }
+  return false;
 };
 
-console.log('Bundle loaded, RAGChat available:', !!window.RAGChat);
+// Expose to window immediately
+window.RAGChat = {
+  mount: mountChat
+};
+
+// Log that we're ready
+console.log('Chat bundle loaded and RAGChat exposed to window');
 
 export default Chat; 
