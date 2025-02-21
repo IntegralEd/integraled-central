@@ -1,24 +1,77 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
+import { getUserNamespace } from '../../utils/auth';
+import { queryPinecone } from '../../utils/pinecone';
+import { getConfig } from '../../utils/config';
 import '../../styles/chat.css';
 
 // Main Chat component
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    const newMessages = [...messages, { role: 'user', content: input }];
-    setMessages(newMessages);
+    const userMessage = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
+    setIsLoading(true);
 
-    setMessages([...newMessages, { 
-      role: 'assistant', 
-      content: `Test response to: ${input}` 
-    }]);
+    try {
+      // Get user's namespace
+      const namespace = getUserNamespace();
+      
+      // Query Pinecone for relevant document chunks
+      const searchResults = await queryPinecone(input, namespace);
+      
+      // Format context from search results
+      const context = searchResults.matches
+        .map(match => match.metadata.text)
+        .join('\n\n');
+
+      // Get OpenAI config
+      const config = await getConfig();
+      
+      // Query OpenAI with context
+      const completion = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful assistant. Answer questions based on the provided context."
+            },
+            {
+              role: "user",
+              content: `Context: ${context}\n\nQuestion: ${input}`
+            }
+          ]
+        })
+      });
+
+      const data = await completion.json();
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: data.choices[0].message.content 
+      }]);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error processing your request.' 
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
