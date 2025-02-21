@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { initializeUserContext } from '../utils/userContext';
-import '../styles/chat.css';
+import React, { useState, useEffect } from 'react';
+import { initializeUserContext } from '../../utils/userContext';
+import '../../styles/chat.css';
 
 // Simplified chat interface
 export default function Chat() {
