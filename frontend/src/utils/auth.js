@@ -1,18 +1,24 @@
 // Get user namespace from Softr
 export const getUserNamespace = () => {
   try {
-    // Check if Softr user exists and get email
-    if (window.softr && window.softr.user) {
-      // Use {LOGGED_IN_USER:Email} as namespace
-      const namespace = window.softr.user.email || '{LOGGED_IN_USER:Email}';
-      console.log('User namespace:', namespace);
+    // Try to get namespace from window.pc_userEmail (set by Softr)
+    if (window.pc_userEmail) {
+      const namespace = window.pc_userEmail;
+      console.log('Using pc_userEmail as namespace:', namespace);
       return namespace;
     }
     
-    console.warn('No Softr user found, using default namespace');
-    return '{LOGGED_IN_USER:Email}'; // This will be replaced by Softr with actual email
+    // Fallback to userId if email not available
+    if (window.pc_userId) {
+      const namespace = window.pc_userId;
+      console.log('Using pc_userId as namespace:', namespace);
+      return namespace;
+    }
+    
+    console.warn('No user context found, using default namespace');
+    return 'default';
   } catch (error) {
     console.warn('Auth error:', error);
-    return '{LOGGED_IN_USER:Email}';
+    return 'default';
   }
 }; 
