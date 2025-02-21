@@ -5,55 +5,53 @@ export const queryPinecone = async (query, userNamespace) => {
     const config = await getConfig();
     const pineconeUrl = `${config.pinecone_url.trim()}/query`;
     
-    // First try default namespace
-    let response = await fetch(pineconeUrl, {
-      method: 'POST',
-      headers: {
-        'Api-Key': config.PINECONE_API_KEY,
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({
-        namespace: 'default',
-        topK: 3,
-        includeMetadata: true,
-        vector: query,
-        includeValues: false
-      })
-    });
-
-    let results = await response.json();
-    
-    // If no results in default, try user namespace
-    if (!results.matches || results.matches.length === 0) {
-      console.log('No results in default namespace, trying user namespace:', userNamespace);
-      
-      response = await fetch(pineconeUrl, {
+    // Query both default and user namespaces
+    const [defaultResults, userResults] = await Promise.all([
+      // Query default namespace
+      fetch(pineconeUrl, {
         method: 'POST',
         headers: {
           'Api-Key': config.PINECONE_API_KEY,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
         },
         body: JSON.stringify({
-          namespace: userNamespace,
+          namespace: 'default',
           topK: 3,
           includeMetadata: true,
           vector: query,
-          includeValues: false
         })
-      });
+      }).then(res => res.json()),
       
-      results = await response.json();
-      
-      // If still no results, we might need to create the namespace
-      // This will happen naturally when the first chat is stored
-      if (!results.matches || results.matches.length === 0) {
-        console.log('No results in user namespace either. Namespace will be created with first chat.');
-      }
-    }
+      // Query user namespace
+      fetch(pineconeUrl, {
+        method: 'POST',
+        headers: {
+          'Api-Key': config.PINECONE_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          namespace: userNamespace,
+          topK: 2,  // Fewer results from personal namespace
+          includeMetadata: true,
+          vector: query,
+        })
+      }).then(res => res.json()).catch(() => ({ matches: [] })) // Gracefully handle missing namespace
+    ]);
 
-    return results;
+    // Combine and deduplicate results
+    const allMatches = [
+      ...(defaultResults.matches || []),
+      ...(userResults.matches || [])
+    ];
+
+    return {
+      matches: allMatches,
+      namespaces: {
+        default: defaultResults.matches?.length || 0,
+        user: userResults.matches?.length || 0
+      }
+    };
+
   } catch (error) {
     console.error('Pinecone query error:', error);
     throw error;
@@ -66,12 +64,12 @@ export const storeChatInPinecone = async (message, vector, userNamespace) => {
     const config = await getConfig();
     const pineconeUrl = `${config.pinecone_url.trim()}/vectors/upsert`;
     
+    // Store only in user namespace
     const response = await fetch(pineconeUrl, {
       method: 'POST',
       headers: {
         'Api-Key': config.PINECONE_API_KEY,
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({
         namespace: userNamespace,
@@ -80,7 +78,8 @@ export const storeChatInPinecone = async (message, vector, userNamespace) => {
           values: vector,
           metadata: {
             text: message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            type: 'chat_history'
           }
         }]
       })
