@@ -1,3 +1,5 @@
+import { getConfig } from './config';
+
 export const queryPinecone = async (query, namespace) => {
   // Get config first
   const config = await getConfig();
