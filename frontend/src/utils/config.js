@@ -1,29 +1,22 @@
 // AWS Parameter Store configuration
 export const getConfig = async () => {
   try {
-    // AWS Parameter Store ARNs
-    const parameterPaths = {
-      pinecone_url: '/rag-bmore/prod/config/pinecone_url',
-      PINECONE_API_KEY: '/rag-bmore/prod/secrets/PINECONE_API_KEY'
-    };
-
-    // Fetch from AWS Parameter Store
-    const response = await fetch('/api/aws/parameters', {
-      method: 'POST',
+    // Call Lambda function URL
+    const response = await fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws/', {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ paths: Object.values(parameterPaths) })
+      }
     });
     
     if (!response.ok) {
-      throw new Error('Failed to fetch config from AWS Parameter Store');
+      throw new Error(`Failed to fetch config: ${response.status}`);
     }
 
-    const parameters = await response.json();
+    const config = await response.json();
     return {
-      pinecone_url: parameters[parameterPaths.pinecone_url],
-      PINECONE_API_KEY: parameters[parameterPaths.PINECONE_API_KEY]
+      pinecone_url: config.pinecone_url,
+      PINECONE_API_KEY: config.pinecone_api_key
     };
   } catch (error) {
     console.error('Failed to get config:', error);
