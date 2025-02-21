@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import '../../styles/chat.css';
 
 const Chat = ({ userContext }) => {
@@ -55,5 +56,30 @@ const Chat = ({ userContext }) => {
     </div>
   );
 };
+
+// Self-mounting function
+const mountChat = () => {
+  const rootElement = document.getElementById('rag-chat-root');
+  if (rootElement && window.logged_in_user) {
+    const userContext = {
+      email: window.logged_in_user.Email
+    };
+    ReactDOM.render(<Chat userContext={userContext} />, rootElement);
+    console.log('Chat mounted with email:', userContext.email);
+  } else {
+    console.log('Waiting for root element and user data...');
+    setTimeout(mountChat, 100);
+  }
+};
+
+// Export the mount function
+window.mountChat = mountChat;
+
+// Auto-mount when script loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountChat);
+} else {
+  mountChat();
+}
 
 export default Chat; 
