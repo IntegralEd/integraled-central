@@ -22,7 +22,7 @@ const Chat = () => {
 
   return (
     <div className="chat-container">
-      <h3>Chat Interface</h3>
+      <h3>Chat Interface (Mounted)</h3>
       <div className="message-list">
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.role}`}>
@@ -42,37 +42,23 @@ const Chat = () => {
   );
 };
 
-// Wait for Softr header and then mount
-const waitForHeader = () => {
-  console.log('Waiting for header...');
-  
-  // Look for the header element
-  const headerElement = document.querySelector('header');
-  if (headerElement) {
-    console.log('Header found, proceeding with mount');
-    let root = document.getElementById('rag-chat-root');
-    if (!root) {
-      console.log('Creating root element');
-      root = document.createElement('div');
-      root.id = 'rag-chat-root';
-      document.body.appendChild(root);
-    }
-    
-    try {
-      console.log('Mounting React component');
+// Explicitly add to window
+window.RAGChat = {
+  Chat,
+  mount: () => {
+    console.log('Mount function called');
+    const root = document.getElementById('rag-chat-root');
+    if (root) {
+      console.log('Found root element, mounting...');
       ReactDOM.render(<Chat />, root);
-      console.log('Mount successful');
-    } catch (error) {
-      console.error('Mount failed:', error);
+      console.log('Mount complete');
+      return true;
     }
-  } else {
-    console.log('Header not found, retrying...');
-    setTimeout(waitForHeader, 100);
+    console.log('Root element not found');
+    return false;
   }
 };
 
-// Start waiting for header when bundle loads
-console.log('Bundle loaded, starting header check');
-waitForHeader();
+console.log('Bundle loaded, RAGChat available:', !!window.RAGChat);
 
 export default Chat; 
