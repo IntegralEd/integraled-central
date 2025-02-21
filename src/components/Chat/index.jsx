@@ -1,39 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import '../../styles/chat.css';
 
-const Chat = ({ userContext }) => {
+const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-
-  useEffect(() => {
-    console.log('Chat mounted with context:', userContext);
-  }, [userContext]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
+    // Add user message
     const newMessages = [...messages, { role: 'user', content: input }];
     setMessages(newMessages);
     setInput('');
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: input,
-          email: userContext.email,
-          history: messages
-        })
-      });
-
-      const data = await response.json();
-      setMessages([...newMessages, { role: 'assistant', content: data.response }]);
-    } catch (error) {
-      console.error('Chat error:', error);
-    }
+    // Add mock response for testing
+    setMessages([...newMessages, { 
+      role: 'assistant', 
+      content: `Test response to: ${input}` 
+    }]);
   };
 
   return (
@@ -57,29 +43,16 @@ const Chat = ({ userContext }) => {
   );
 };
 
-// Self-mounting function
+// Simple mount function
 const mountChat = () => {
-  const rootElement = document.getElementById('rag-chat-root');
-  if (rootElement && window.logged_in_user) {
-    const userContext = {
-      email: window.logged_in_user.Email
-    };
-    ReactDOM.render(<Chat userContext={userContext} />, rootElement);
-    console.log('Chat mounted with email:', userContext.email);
-  } else {
-    console.log('Waiting for root element and user data...');
-    setTimeout(mountChat, 100);
+  const root = document.getElementById('rag-chat-root');
+  if (root) {
+    ReactDOM.render(<Chat />, root);
+    console.log('Chat mounted');
   }
 };
 
-// Export the mount function
-window.mountChat = mountChat;
-
-// Auto-mount when script loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mountChat);
-} else {
-  mountChat();
-}
+// Mount when script loads
+mountChat();
 
 export default Chat; 
