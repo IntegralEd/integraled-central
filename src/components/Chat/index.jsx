@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import '../../styles/chat.css';
 
@@ -6,20 +6,14 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
 
-  useEffect(() => {
-    console.log('Chat component mounted');
-  }, []);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message
     const newMessages = [...messages, { role: 'user', content: input }];
     setMessages(newMessages);
     setInput('');
 
-    // Add mock response for testing
     setMessages([...newMessages, { 
       role: 'assistant', 
       content: `Test response to: ${input}` 
@@ -48,28 +42,33 @@ const Chat = () => {
   );
 };
 
-// Make sure we wait for DOM content to be loaded
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, attempting to mount Chat');
-  const root = document.getElementById('rag-chat-root');
-  if (root) {
-    console.log('Found root element, mounting Chat');
-    ReactDOM.render(<Chat />, root);
-  } else {
-    console.error('Could not find rag-chat-root element');
+// Create a global function to mount the chat
+window.mountRAGChat = () => {
+  console.log('Mounting RAG Chat...');
+  
+  // Create root element if it doesn't exist
+  let root = document.getElementById('rag-chat-root');
+  if (!root) {
+    console.log('Creating root element...');
+    root = document.createElement('div');
+    root.id = 'rag-chat-root';
+    document.body.appendChild(root);
   }
-});
 
-// Also try mounting immediately in case DOMContentLoaded already fired
-if (document.readyState === 'complete') {
-  console.log('Document already complete, mounting Chat');
-  const root = document.getElementById('rag-chat-root');
-  if (root) {
-    console.log('Found root element, mounting Chat');
+  // Mount React component
+  try {
+    console.log('Attempting to render Chat component...');
     ReactDOM.render(<Chat />, root);
-  } else {
-    console.error('Could not find rag-chat-root element');
+    console.log('Chat component rendered successfully');
+    return true;
+  } catch (error) {
+    console.error('Failed to render Chat:', error);
+    return false;
   }
-}
+};
+
+// Try to mount immediately
+console.log('Chat bundle loaded, attempting immediate mount...');
+window.mountRAGChat();
 
 export default Chat; 
