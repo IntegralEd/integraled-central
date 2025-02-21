@@ -7,7 +7,9 @@ export const queryPinecone = async (query, namespace) => {
   const config = await getConfig();
   
   // Query vectors in specific namespace
-  const response = await fetch(`https://${config.PINECONE_ENVIRONMENT}/query`, {
+  const pineconeUrl = `${config.pinecone_url}/${config.PINECONE_INDEX_NAME}/query`;
+  
+  const response = await fetch(pineconeUrl, {
     method: 'POST',
     headers: {
       'Api-Key': config.PINECONE_API_KEY,
