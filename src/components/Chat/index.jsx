@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import '../../styles/chat.css';
 
+// Main Chat component
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -42,22 +43,27 @@ const Chat = () => {
   );
 };
 
-// Create the mount function first
-const mountChat = () => {
+// Initialize function that gets called when script loads
+function initialize() {
+  console.log('Initializing chat...');
   const root = document.getElementById('rag-chat-root');
-  if (root) {
-    ReactDOM.render(<Chat />, root);
-    return true;
+  if (!root) {
+    console.error('Could not find root element');
+    return;
   }
-  return false;
-};
+  
+  try {
+    ReactDOM.render(<Chat />, root);
+    console.log('Chat mounted successfully');
+  } catch (error) {
+    console.error('Failed to mount chat:', error);
+  }
+}
 
-// Expose to window immediately
-window.RAGChat = {
-  mount: mountChat
-};
+// Call initialize when script loads
+initialize();
 
-// Log that we're ready
-console.log('Chat bundle loaded and RAGChat exposed to window');
+// Also expose initialize globally
+window.initializeChat = initialize;
 
 export default Chat; 
