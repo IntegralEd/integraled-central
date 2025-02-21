@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import '../../styles/chat.css';
 
 const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
+
+  useEffect(() => {
+    console.log('Chat component mounted');
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,6 +28,7 @@ const Chat = () => {
 
   return (
     <div className="chat-container">
+      <h3>Chat Interface</h3>
       <div className="message-list">
         {messages.map((msg, i) => (
           <div key={i} className={`message ${msg.role}`}>
@@ -43,16 +48,28 @@ const Chat = () => {
   );
 };
 
-// Simple mount function
-const mountChat = () => {
+// Make sure we wait for DOM content to be loaded
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, attempting to mount Chat');
   const root = document.getElementById('rag-chat-root');
   if (root) {
+    console.log('Found root element, mounting Chat');
     ReactDOM.render(<Chat />, root);
-    console.log('Chat mounted');
+  } else {
+    console.error('Could not find rag-chat-root element');
   }
-};
+});
 
-// Mount when script loads
-mountChat();
+// Also try mounting immediately in case DOMContentLoaded already fired
+if (document.readyState === 'complete') {
+  console.log('Document already complete, mounting Chat');
+  const root = document.getElementById('rag-chat-root');
+  if (root) {
+    console.log('Found root element, mounting Chat');
+    ReactDOM.render(<Chat />, root);
+  } else {
+    console.error('Could not find rag-chat-root element');
+  }
+}
 
 export default Chat; 
