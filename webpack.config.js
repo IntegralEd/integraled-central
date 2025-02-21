@@ -5,6 +5,9 @@ module.exports = {
   output: {
     filename: 'chat-bundle.js',
     path: path.resolve(__dirname, 'dist'),
+    library: 'ChatApp',
+    libraryTarget: 'umd',
+    globalObject: 'this'
   },
   module: {
     rules: [
@@ -23,5 +26,9 @@ module.exports = {
         use: ['style-loader', 'css-loader']
       }
     ]
+  },
+  externals: {
+    'react': 'React',
+    'react-dom': 'ReactDOM'
   }
 }; 

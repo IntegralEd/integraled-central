@@ -3,7 +3,7 @@ import { initializeUserContext } from '../../utils/userContext';
 import '../../styles/chat.css';
 
 // Simplified chat interface
-export default function Chat() {
+const Chat = ({ userContext }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [namespace, setNamespace] = useState('default'); // Will link to Softr identity
@@ -60,4 +60,11 @@ export default function Chat() {
       </form>
     </div>
   );
-} 
+};
+
+// Export for UMD
+if (typeof window !== 'undefined') {
+  window.ChatComponent = Chat;
+}
+
+export default Chat; 
