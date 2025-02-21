@@ -3,7 +3,7 @@ import { getConfig } from './config';
 export const queryPinecone = async (query, userNamespace) => {
   try {
     const config = await getConfig();
-    const pineconeUrl = `${config.pinecone_url.trim()}/query`;
+    const pineconeUrl = 'https://bemorelikebmore-d6g5fbi.svc.aped-4627-b74a.pinecone.io/query';
     console.log('Querying Pinecone at:', pineconeUrl);
     
     // Query both ns1 (default) and user namespaces
