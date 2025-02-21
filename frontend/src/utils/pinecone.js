@@ -1,7 +1,3 @@
-// Basic Pinecone configuration
-const PINECONE_ENVIRONMENT = process.env.PINECONE_ENVIRONMENT;
-const PINECONE_API_KEY = process.env.PINECONE_API_KEY;
-
 export const queryPinecone = async (query, namespace) => {
   // Get config first
   const config = await getConfig();
