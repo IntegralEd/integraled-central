@@ -5,11 +5,9 @@ module.exports = {
   output: {
     filename: 'chat-bundle.js',
     path: path.resolve(__dirname, 'dist'),
-    library: {
-      name: 'ChatComponent',
-      type: 'window',
-      export: 'default'
-    }
+    library: 'RAGChat',
+    libraryTarget: 'window',
+    libraryExport: 'default'
   },
   module: {
     rules: [
@@ -19,10 +17,7 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: [
-              ['@babel/preset-react', { runtime: 'automatic' }],
-              '@babel/preset-env'
-            ]
+            presets: ['@babel/preset-react', '@babel/preset-env']
           }
         }
       },
@@ -33,7 +28,7 @@ module.exports = {
     ]
   },
   externals: {
-    react: 'React',
+    'react': 'React',
     'react-dom': 'ReactDOM'
   }
 }; 
