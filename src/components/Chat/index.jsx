@@ -1,45 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { initializeUserContext } from '../../utils/userContext';
 import '../../styles/chat.css';
 
-// Simplified chat interface
 const Chat = ({ userContext }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
-  const [namespace, setNamespace] = useState('default'); // Will link to Softr identity
+
+  useEffect(() => {
+    console.log('Chat mounted with context:', userContext);
+  }, [userContext]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Add user message
     const newMessages = [...messages, { role: 'user', content: input }];
     setMessages(newMessages);
     setInput('');
 
     try {
-      // Query Pinecone with namespace
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: input,
-          namespace: namespace, // Will come from Softr
-          history: messages 
+          email: userContext.email,
+          history: messages
         })
       });
 
       const data = await response.json();
       setMessages([...newMessages, { role: 'assistant', content: data.response }]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Chat error:', error);
     }
   };
-
-  useEffect(() => {
-    // Initialize user context
-    initializeUserContext();
-  }, []);
 
   return (
     <div className="chat-container">
@@ -61,10 +55,5 @@ const Chat = ({ userContext }) => {
     </div>
   );
 };
-
-// Export for UMD
-if (typeof window !== 'undefined') {
-  window.ChatComponent = Chat;
-}
 
 export default Chat; 
