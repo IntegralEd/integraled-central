@@ -42,33 +42,37 @@ const Chat = () => {
   );
 };
 
-// Create a global function to mount the chat
-window.mountRAGChat = () => {
-  console.log('Mounting RAG Chat...');
+// Wait for Softr header and then mount
+const waitForHeader = () => {
+  console.log('Waiting for header...');
   
-  // Create root element if it doesn't exist
-  let root = document.getElementById('rag-chat-root');
-  if (!root) {
-    console.log('Creating root element...');
-    root = document.createElement('div');
-    root.id = 'rag-chat-root';
-    document.body.appendChild(root);
-  }
-
-  // Mount React component
-  try {
-    console.log('Attempting to render Chat component...');
-    ReactDOM.render(<Chat />, root);
-    console.log('Chat component rendered successfully');
-    return true;
-  } catch (error) {
-    console.error('Failed to render Chat:', error);
-    return false;
+  // Look for the header element
+  const headerElement = document.querySelector('header');
+  if (headerElement) {
+    console.log('Header found, proceeding with mount');
+    let root = document.getElementById('rag-chat-root');
+    if (!root) {
+      console.log('Creating root element');
+      root = document.createElement('div');
+      root.id = 'rag-chat-root';
+      document.body.appendChild(root);
+    }
+    
+    try {
+      console.log('Mounting React component');
+      ReactDOM.render(<Chat />, root);
+      console.log('Mount successful');
+    } catch (error) {
+      console.error('Mount failed:', error);
+    }
+  } else {
+    console.log('Header not found, retrying...');
+    setTimeout(waitForHeader, 100);
   }
 };
 
-// Try to mount immediately
-console.log('Chat bundle loaded, attempting immediate mount...');
-window.mountRAGChat();
+// Start waiting for header when bundle loads
+console.log('Bundle loaded, starting header check');
+waitForHeader();
 
 export default Chat; 
