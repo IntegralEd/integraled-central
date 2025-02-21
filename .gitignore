@@ -133,3 +133,4 @@ dmypy.json
 pytest.ini
 .testmondata
 
+update_params.sh
