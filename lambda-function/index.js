@@ -1,9 +1,9 @@
 const AWS = require('aws-sdk');
 
-// Define headers once with wildcard origin pattern
+// Define headers once with valid origin format (no trailing slash)
 const responseHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': 'https://bmore.softr.app/*'
+    'Access-Control-Allow-Origin': 'https://bmore.softr.app'  // Correct format without trailing slash
 };
 
 exports.handler = async (event) => {
