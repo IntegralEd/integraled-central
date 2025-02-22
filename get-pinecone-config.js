@@ -1,7 +1,16 @@
 exports.handler = async (event) => {
     try {
         const ssm = new AWS.SSM();
-        // ... existing parameter fetching code ...
+        const [urlParam, apiKeyParam] = await Promise.all([
+            ssm.getParameter({
+                Name: '/rag-bmore/prod/config/pinecone_url',
+                WithDecryption: false
+            }).promise(),
+            ssm.getParameter({
+                Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
+                WithDecryption: true
+            }).promise()
+        ]);
 
         return {
             statusCode: 200,
@@ -17,6 +26,10 @@ exports.handler = async (event) => {
             })
         };
     } catch (error) {
-        // ... error handling ...
+        console.error('Error:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Failed to fetch configuration' })
+        };
     }
 }; 

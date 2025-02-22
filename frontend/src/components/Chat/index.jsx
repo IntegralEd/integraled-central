@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { getUserNamespace } from '../../utils/auth';
 import { queryPinecone } from '../../utils/pinecone';
@@ -7,9 +7,49 @@ import '../../styles/chat.css';
 
 // Main Chat component
 const Chat = () => {
+  const [isReady, setIsReady] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Initialize chat only when user context is ready
+  useEffect(() => {
+    const initializeChat = async () => {
+      try {
+        // Wait for user context
+        while (!window.pc_userEmail && !window.pc_userId) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Test config access
+        const config = await getConfig();
+        if (!config.pinecone_url || !config.PINECONE_API_KEY) {
+          throw new Error('Invalid config');
+        }
+
+        setIsReady(true);
+      } catch (error) {
+        console.error('Chat initialization error:', error);
+        setError('Failed to initialize chat. Please refresh the page.');
+      }
+    };
+
+    initializeChat();
+  }, []);
+
+  // Show loading or error state
+  if (!isReady) {
+    return (
+      <div className="chat-container">
+        {error ? (
+          <div className="error-message">{error}</div>
+        ) : (
+          <div className="loading-message">Initializing chat...</div>
+        )}
+      </div>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
