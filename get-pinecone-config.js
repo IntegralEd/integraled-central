@@ -1,4 +1,32 @@
+const AWS = require('aws-sdk');
+
 exports.handler = async (event) => {
+    // Configure AWS SDK
+    AWS.config.update({
+        region: 'us-east-2'  // Make sure this matches your Lambda region
+    });
+
+    // Add debug logging
+    console.log('Request received:', {
+        method: event.requestContext?.http?.method,
+        headers: event.headers,
+        origin: event.headers?.origin || event.headers?.Origin
+    });
+
+    // Handle OPTIONS preflight
+    if (event.requestContext?.http?.method === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': '*',
+                'Access-Control-Max-Age': '86400'
+            },
+            body: JSON.stringify({ message: 'Preflight OK' })
+        };
+    }
+
     try {
         const ssm = new AWS.SSM();
         const [urlParam, apiKeyParam] = await Promise.all([
@@ -15,10 +43,10 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers: {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "https://app.softr.io",
-                "Access-Control-Allow-Methods": "GET, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type"
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': '*'
             },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
@@ -26,10 +54,20 @@ exports.handler = async (event) => {
             })
         };
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Lambda error:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to fetch configuration' })
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': '*'
+            },
+            body: JSON.stringify({ 
+                error: 'Failed to fetch configuration',
+                details: error.message,
+                type: error.name
+            })
         };
     }
 }; 
