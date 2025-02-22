@@ -6,28 +6,23 @@ import { getConfig } from '../../utils/config';
 import '../../styles/chat.css';
 
 // Main Chat component
-const Chat = () => {
+const Chat = ({ defaultNamespace = 'NS1' }) => {
   const [isReady, setIsReady] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [namespace, setNamespace] = useState(defaultNamespace);
 
-  // Initialize chat only when user context is ready
+  // Initialize chat with config only
   useEffect(() => {
     const initializeChat = async () => {
       try {
-        // Wait for user context
-        while (!window.pc_userEmail && !window.pc_userId) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
         // Test config access
         const config = await getConfig();
         if (!config.pinecone_url || !config.PINECONE_API_KEY) {
           throw new Error('Invalid config');
         }
-
         setIsReady(true);
       } catch (error) {
         console.error('Chat initialization error:', error);
