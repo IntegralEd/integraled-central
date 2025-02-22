@@ -134,3 +134,6 @@ pytest.ini
 .testmondata
 
 update_params.sh
+node_modules/
+*.zip
+lambda-function/node_modules/
