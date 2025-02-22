@@ -1,9 +1,9 @@
 const AWS = require('aws-sdk');
 
-// Define headers once with specific origin
+// Define headers once with wildcard origin pattern
 const responseHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': 'https://bmore.softr.app'
+    'Access-Control-Allow-Origin': 'https://bmore.softr.app/*'
 };
 
 exports.handler = async (event) => {
