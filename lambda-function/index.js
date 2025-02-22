@@ -1,35 +1,18 @@
 const AWS = require('aws-sdk');
 
-// Define CORS headers once
-const corsHeaders = {
+// Define headers once with specific origin
+const responseHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type,Accept',
-    'Access-Control-Max-Age': '86400'
+    'Access-Control-Allow-Origin': 'https://bmore.softr.app'
 };
 
 exports.handler = async (event) => {
+    console.log("🔄 Received event:", event);
+    
     // Configure AWS SDK
     AWS.config.update({
-        region: 'us-east-2'  // Make sure this matches your Lambda region
+        region: 'us-east-2'
     });
-
-    // Add debug logging
-    console.log('Request received:', {
-        method: event.requestContext?.http?.method,
-        headers: event.headers,
-        origin: event.headers?.origin || event.headers?.Origin
-    });
-
-    // Handle OPTIONS preflight
-    if (event.requestContext?.http?.method === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: JSON.stringify({ message: 'Preflight OK' })
-        };
-    }
 
     try {
         const ssm = new AWS.SSM();
@@ -50,7 +33,7 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            headers: corsHeaders,
+            headers: responseHeaders,
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
@@ -58,10 +41,10 @@ exports.handler = async (event) => {
             })
         };
     } catch (error) {
-        console.error('Lambda error:', error);
+        console.error('❌ Lambda error:', error);
         return {
             statusCode: 500,
-            headers: corsHeaders,
+            headers: responseHeaders,
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',
                 details: error.message,
