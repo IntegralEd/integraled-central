@@ -1,5 +1,14 @@
 const AWS = require('aws-sdk');
 
+// Define CORS headers once
+const corsHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type,Accept',
+    'Access-Control-Max-Age': '86400'
+};
+
 exports.handler = async (event) => {
     // Configure AWS SDK
     AWS.config.update({
@@ -17,12 +26,7 @@ exports.handler = async (event) => {
     if (event.requestContext?.http?.method === 'OPTIONS') {
         return {
             statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': '*',
-                'Access-Control-Max-Age': '86400'
-            },
+            headers: corsHeaders,
             body: JSON.stringify({ message: 'Preflight OK' })
         };
     }
@@ -46,13 +50,7 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type,Accept',
-                'Access-Control-Max-Age': '86400'
-            },
+            headers: corsHeaders,
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
@@ -63,13 +61,7 @@ exports.handler = async (event) => {
         console.error('Lambda error:', error);
         return {
             statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type,Accept',
-                'Access-Control-Max-Age': '86400'
-            },
+            headers: corsHeaders,
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',
                 details: error.message,
