@@ -46,7 +46,8 @@ exports.handler = async (event) => {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': '*'
+                'Access-Control-Allow-Headers': 'Content-Type,Accept',
+                'Access-Control-Max-Age': '86400'
             },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
