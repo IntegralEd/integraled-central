@@ -1,11 +1,5 @@
 const AWS = require('aws-sdk');
 
-// Define headers once with valid origin format (no trailing slash)
-const responseHeaders = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': 'https://bmore.softr.app'  // Correct format without trailing slash
-};
-
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
@@ -33,7 +27,9 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            headers: responseHeaders,
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
@@ -44,7 +40,9 @@ exports.handler = async (event) => {
         console.error('❌ Lambda error:', error);
         return {
             statusCode: 500,
-            headers: responseHeaders,
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',
                 details: error.message,
