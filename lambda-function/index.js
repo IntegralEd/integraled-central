@@ -29,7 +29,7 @@ exports.handler = async (event) => {
 
     try {
         const ssm = new AWS.SSM();
-        const [urlParam, apiKeyParam] = await Promise.all([
+        const [urlParam, apiKeyParam, indexNameParam] = await Promise.all([
             ssm.getParameter({
                 Name: '/rag-bmore/prod/config/pinecone_url',
                 WithDecryption: false
@@ -37,6 +37,10 @@ exports.handler = async (event) => {
             ssm.getParameter({
                 Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
                 WithDecryption: true
+            }).promise(),
+            ssm.getParameter({
+                Name: '/rag-bmore/prod/config/pinecone_index',
+                WithDecryption: false
             }).promise()
         ]);
 
@@ -51,7 +55,8 @@ exports.handler = async (event) => {
             },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
-                pinecone_api_key: apiKeyParam.Parameter.Value
+                pinecone_api_key: apiKeyParam.Parameter.Value,
+                pinecone_index: indexNameParam.Parameter.Value
             })
         };
     } catch (error) {
@@ -62,7 +67,8 @@ exports.handler = async (event) => {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': '*'
+                'Access-Control-Allow-Headers': 'Content-Type,Accept',
+                'Access-Control-Max-Age': '86400'
             },
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',

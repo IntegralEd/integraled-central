@@ -18,7 +18,8 @@ export const getConfig = async () => {
     const config = await response.json();
     return {
       pinecone_url: config.pinecone_url,
-      PINECONE_API_KEY: config.pinecone_api_key
+      PINECONE_API_KEY: config.pinecone_api_key,
+      PINECONE_INDEX: config.pinecone_index
     };
   } catch (error) {
     console.error('Failed to get config:', error);
