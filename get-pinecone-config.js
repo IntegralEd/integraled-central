@@ -16,7 +16,7 @@ exports.handler = async (event) => {
             statusCode: 200,
             headers: {
                 "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "https://app.softr.io", // Your Softr domain
+                "Access-Control-Allow-Origin": "https://app.softr.io",
                 "Access-Control-Allow-Methods": "GET, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type"
             },
