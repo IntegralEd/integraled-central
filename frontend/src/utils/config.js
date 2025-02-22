@@ -5,8 +5,10 @@ export const getConfig = async () => {
     const response = await fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws/', {
       method: 'GET',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
+      },
+      mode: 'cors'
     });
     
     if (!response.ok) {
