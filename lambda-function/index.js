@@ -21,7 +21,7 @@ exports.handler = async (event) => {
     }
 
     try {
-        // Get all config parameters regardless of request type
+        // Get all config parameters
         const [urlParam, apiKeyParam, indexNameParam, openaiKeyParam, openaiOrgParam, openaiProjParam] = await Promise.all([
             ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/config/pinecone_url',
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
             }))
         ]);
 
-        // If GET request, return config
+        // Handle GET request for config
         if (event.requestContext.http.method === 'GET') {
             return {
                 statusCode: 200,
@@ -66,25 +66,29 @@ exports.handler = async (event) => {
                 })
             };
         }
-        
-        // If POST request, proxy to Pinecone
+
+        // Handle POST request for Pinecone query
         if (event.requestContext.http.method === 'POST') {
-            const body = JSON.parse(event.body || '{}');
-            
-            const pineconeResponse = await fetch(`${urlParam.Parameter.Value}/vectors/query`, {
+            const body = JSON.parse(event.body);
+            const response = await fetch(`${urlParam.Parameter.Value}/vectors/query`, {
                 method: 'POST',
                 headers: {
                     'Api-Key': apiKeyParam.Parameter.Value,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(body)
+                body: JSON.stringify({
+                    namespace: body.namespace,
+                    topK: body.topK || 3,
+                    includeMetadata: body.includeMetadata || true,
+                    vector: body.vector
+                })
             });
-            
-            if (!pineconeResponse.ok) {
-                throw new Error(`Pinecone query failed: ${pineconeResponse.status}`);
+
+            if (!response.ok) {
+                throw new Error(`Pinecone query failed: ${response.status}`);
             }
-            
-            const data = await pineconeResponse.json();
+
+            const data = await response.json();
             return {
                 statusCode: 200,
                 headers: {
@@ -93,6 +97,14 @@ exports.handler = async (event) => {
                 body: JSON.stringify(data)
             };
         }
+
+        return {
+            statusCode: 400,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ error: 'Invalid request method' })
+        };
 
     } catch (error) {
         console.error('❌ Lambda error:', error);
