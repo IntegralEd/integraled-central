@@ -40,9 +40,6 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers: {
-                'Access-Control-Allow-Origin': 'https://integraled.github.io',
-                'Access-Control-Allow-Methods': 'GET, POST',
-                'Access-Control-Allow-Headers': '*',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -59,9 +56,6 @@ exports.handler = async (event) => {
         return {
             statusCode: 500,
             headers: {
-                'Access-Control-Allow-Origin': 'https://integraled.github.io',
-                'Access-Control-Allow-Methods': 'GET, POST',
-                'Access-Control-Allow-Headers': '*',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
