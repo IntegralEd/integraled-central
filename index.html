@@ -52,7 +52,10 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="/rag-bmore-app/public/chat-bundle.js"></script>
-    <script>
+    <script type="module">
+        import { queryPinecone } from '/rag-bmore-app/src/utils/pinecone.js';
+        window.queryPinecone = queryPinecone; // Make it available globally
+
         document.addEventListener('DOMContentLoaded', async function initializeChat() {
             console.log('🔄 Initializing chat system...');
 
@@ -111,34 +114,6 @@
             }
         }
 
-        async function queryPinecone(vector, namespace = 'ns1') {
-            try {
-                // Use the Lambda proxy instead of calling Pinecone directly
-                const response = await fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    mode: 'cors',
-                    body: JSON.stringify({
-                        namespace: namespace,
-                        topK: 3,
-                        includeMetadata: true,
-                        vector: vector
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`❌ Pinecone query failed: ${response.status}`);
-                }
-
-                return await response.json();
-            } catch (error) {
-                console.error('🚨 Pinecone query failed:', error);
-                throw error;
-            }
-        }
-
         function addSaveChatButton(container) {
             console.log('✅ Adding Save Chat button...');
             const saveButton = document.createElement('button');
@@ -157,7 +132,7 @@
             try {
                 const userNamespace = window.userData.Email.toLowerCase();
                 console.log('📁 Saving chat to user namespace:', userNamespace);
-                alert(`✅ Chat saved to your profile under namespace: ${userNamespace}`);
+                await queryPinecone(userNamespace);
             } catch (error) {
                 console.error('🚨 Failed to save chat:', error);
                 alert('⚠️ Unable to save chat at this time.');
