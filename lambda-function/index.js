@@ -5,24 +5,56 @@ const ssmClient = new SSMClient();
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
-    if (event.requestContext.http.method === 'POST') {
-        try {
-            // Get config parameters
-            const [urlParam, apiKeyParam, indexParam] = await Promise.all([
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/config/pinecone_url',
-                    WithDecryption: false
-                })),
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
-                    WithDecryption: true
-                })),
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/config/PINECONE_INDEX_NAME',
-                    WithDecryption: false
-                }))
-            ]);
+    // Get all config parameters at the start
+    const [urlParam, apiKeyParam, indexParam, openaiKeyParam, openaiOrgParam, openaiProjectParam] = await Promise.all([
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/pinecone_url',
+            WithDecryption: false
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
+            WithDecryption: true
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/PINECONE_INDEX_NAME',
+            WithDecryption: false
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
+            WithDecryption: true
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/OPENAI_ORG_ID',
+            WithDecryption: false
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/OPENAI_PROJECT_ID',
+            WithDecryption: false
+        }))
+    ]);
 
+    if (event.requestContext.http.method === 'GET') {
+        try {
+            return {
+                statusCode: 200,
+                body: JSON.stringify({
+                    pinecone_url: urlParam.Parameter.Value,
+                    pinecone_api_key: apiKeyParam.Parameter.Value,
+                    pinecone_index: indexParam.Parameter.Value,
+                    openai_api_key: openaiKeyParam.Parameter.Value,
+                    openai_org_id: openaiOrgParam.Parameter.Value,
+                    openai_project_id: openaiProjectParam.Parameter.Value
+                })
+            };
+        } catch (error) {
+            console.error('Error fetching config:', error);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: 'Failed to fetch configuration' })
+            };
+        }
+    } else if (event.requestContext.http.method === 'POST') {
+        try {
             const body = JSON.parse(event.body);
             console.log('Processing vector query:', body.vector?.substring(0, 50));
             
@@ -57,42 +89,6 @@ exports.handler = async (event) => {
             return {
                 statusCode: error.name === 'AbortError' ? 504 : 502,
                 body: JSON.stringify({ error: error.message })
-            };
-        }
-    } else if (event.requestContext.http.method === 'GET') {
-        try {
-            // Get all config parameters
-            const [openaiKeyParam, openaiOrgParam, openaiProjectParam] = await Promise.all([
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
-                    WithDecryption: true
-                })),
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/config/OPENAI_ORG_ID',
-                    WithDecryption: false
-                })),
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/config/OPENAI_PROJECT_ID',
-                    WithDecryption: false
-                }))
-            ]);
-            
-            return {
-                statusCode: 200,
-                body: JSON.stringify({
-                    pinecone_url: urlParam.Parameter.Value,
-                    pinecone_api_key: apiKeyParam.Parameter.Value,
-                    pinecone_index: indexParam.Parameter.Value,
-                    openai_api_key: openaiKeyParam.Parameter.Value,
-                    openai_org_id: openaiOrgParam.Parameter.Value,
-                    openai_project_id: openaiProjectParam.Parameter.Value
-                })
-            };
-        } catch (error) {
-            console.error('Error fetching config:', error);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: 'Failed to fetch configuration' })
             };
         }
     }
