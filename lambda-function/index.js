@@ -6,22 +6,26 @@ const ssmClient = new SSMClient({ region: 'us-east-2' });
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
+    // Get config parameters once at the start
+    const [urlParam, apiKeyParam, indexParam] = await Promise.all([
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/pinecone_url',
+            WithDecryption: false
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
+            WithDecryption: true
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/PINECONE_INDEX_NAME',
+            WithDecryption: false
+        }))
+    ]);
+
     if (event.requestContext.http.method === 'GET') {
         try {
             // Get all config parameters
-            const [urlParam, apiKeyParam, indexParam, openaiKeyParam, openaiOrgParam, openaiProjectParam] = await Promise.all([
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/config/pinecone_url',
-                    WithDecryption: false
-                })),
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
-                    WithDecryption: true
-                })),
-                ssmClient.send(new GetParameterCommand({
-                    Name: '/rag-bmore/prod/config/PINECONE_INDEX_NAME',
-                    WithDecryption: false
-                })),
+            const [openaiKeyParam, openaiOrgParam, openaiProjectParam] = await Promise.all([
                 ssmClient.send(new GetParameterCommand({
                     Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
                     WithDecryption: true
@@ -59,23 +63,22 @@ exports.handler = async (event) => {
             const body = JSON.parse(event.body);
             console.log('Processing vector query:', body.vector?.substring(0, 50));
             
-            const controller = new AbortController();
-            const timeout = setTimeout(() => {
-                controller.abort();
-                console.log('Request aborted due to timeout');
-            }, 8000);
-            
+            const pineconeEndpoint = `${urlParam.Parameter.Value}/query`;
+            const pineconeBody = {
+                namespace: body.namespace,
+                topK: body.topK || 3,
+                includeMetadata: body.includeMetadata || true,
+                vector: body.vector
+            };
+
             const response = await fetch(pineconeEndpoint, {
                 method: 'POST',
                 headers: {
                     'Api-Key': apiKeyParam.Parameter.Value,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(pineconeBody),
-                signal: controller.signal
+                body: JSON.stringify(pineconeBody)
             });
-            
-            clearTimeout(timeout);
             
             if (!response.ok) {
                 throw new Error(`Pinecone request failed: ${response.status}`);
@@ -90,9 +93,7 @@ exports.handler = async (event) => {
             console.error('Lambda error:', error);
             return {
                 statusCode: error.name === 'AbortError' ? 504 : 502,
-                body: JSON.stringify({ 
-                    error: error.name === 'AbortError' ? 'Request timed out' : error.message
-                })
+                body: JSON.stringify({ error: error.message })
             };
         }
     }
