@@ -67,32 +67,59 @@ exports.handler = async (event) => {
             };
         }
 
-        // Handle POST request for Pinecone query
+        // Handle POST request for Pinecone operations
         if (event.requestContext.http.method === 'POST') {
             const body = JSON.parse(event.body);
-            const response = await fetch(`${urlParam.Parameter.Value}/vectors/query`, {
+            const action = body.action || 'query'; // Default to query if no action specified
+            
+            let pineconeEndpoint;
+            let pineconeBody;
+            
+            if (action === 'query') {
+                pineconeEndpoint = `${urlParam.Parameter.Value}/vectors/query`;
+                pineconeBody = {
+                    namespace: body.namespace,
+                    topK: body.topK || 3,
+                    includeMetadata: body.includeMetadata || true,
+                    vector: body.vector
+                };
+            } else if (action === 'upsert') {
+                pineconeEndpoint = `${urlParam.Parameter.Value}/vectors/upsert`;
+                pineconeBody = {
+                    namespace: body.namespace,
+                    vectors: [{
+                        id: `chat-${Date.now()}`,
+                        values: body.vector,
+                        metadata: {
+                            text: body.message,
+                            timestamp: new Date().toISOString(),
+                            type: 'chat_history'
+                        }
+                    }]
+                };
+            }
+
+            const response = await fetch(pineconeEndpoint, {
                 method: 'POST',
                 headers: {
                     'Api-Key': apiKeyParam.Parameter.Value,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    namespace: body.namespace,
-                    topK: body.topK || 3,
-                    includeMetadata: body.includeMetadata || true,
-                    vector: body.vector
-                })
+                body: JSON.stringify(pineconeBody)
             });
 
             if (!response.ok) {
-                throw new Error(`Pinecone query failed: ${response.status}`);
+                throw new Error(`Pinecone ${action} failed: ${response.status}`);
             }
 
             const data = await response.json();
             return {
                 statusCode: 200,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': 'https://integraled.github.io',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
                 },
                 body: JSON.stringify(data)
             };
