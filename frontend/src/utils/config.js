@@ -18,8 +18,9 @@ export const getConfig = async () => {
     const config = await response.json();
     return {
       pinecone_url: config.pinecone_url,
-      PINECONE_API_KEY: config.pinecone_api_key,
-      PINECONE_INDEX: config.pinecone_index
+      pinecone_api_key: config.pinecone_api_key,
+      PINECONE_INDEX: config.pinecone_index,
+      openai_api_key: config.openai_api_key
     };
   } catch (error) {
     console.error('Failed to get config:', error);

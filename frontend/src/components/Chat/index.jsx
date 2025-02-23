@@ -76,7 +76,7 @@ const Chat = ({ defaultNamespace = 'NS1' }) => {
       const completion = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${config.OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${config.openai_api_key}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
