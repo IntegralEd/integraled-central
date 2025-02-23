@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RAG Chat</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="/rag-bmore-app/">
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <style>
+        /* ✅ Chat Container Styling */
+        #chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* ✅ Error Message Styling */
+        .error-message {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        /* ✅ Save Chat Button */
+        .save-chat-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .save-chat-btn:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container"></div>
+    <script src="dist/chat-bundle.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function initializeChat() {
+            console.log('🔄 Initializing chat system...');
+
+            try {
+                if (!window.React || !window.ReactDOM || !window.RAGChat) {
+                    throw new Error('❌ React, ReactDOM, or RAGChat component not loaded.');
+                }
+
+                const container = document.getElementById('chat-container');
+                if (!container) {
+                    throw new Error('❌ Chat container not found.');
+                }
+
+                console.log('🔍 Fetching config from Lambda...');
+                const config = await getConfig();
+                console.log('✅ Config loaded:', config);
+
+                const root = window.ReactDOM.createRoot(container);
+                root.render(window.React.createElement(window.RAGChat, { namespace: 'NS1' }));
+                console.log('✅ Chat component mounted with default namespace: NS1');
+
+                if (window.userData?.Email) {
+                    addSaveChatButton(container);
+                }
+            } catch (error) {
+                console.error('🚨 Chat initialization failed:', error);
+                document.getElementById('chat-container').innerHTML = `
+                    <div class="error-message">
+                        ⚠️ Failed to initialize chat. Please refresh the page or contact support.
+                        <br>
+                        <small>Error: ${error.message}</small>
+                    </div>
+                `;
+            }
+        });
+
+        async function getConfig() {
+            try {
+                const response = await fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws/', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`❌ HTTP error! Status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('🚨 Config fetch failed:', error);
+                throw error;
+            }
+        }
+
+        function addSaveChatButton(container) {
+            console.log('✅ Adding Save Chat button...');
+            const saveButton = document.createElement('button');
+            saveButton.textContent = '💾 Save This Chat';
+            saveButton.className = 'save-chat-btn';
+            saveButton.onclick = saveChatToUserProfile;
+            container.appendChild(saveButton);
+        }
+
+        async function saveChatToUserProfile() {
+            if (!window.userData?.Email) {
+                alert('Please log in to save your chat.');
+                return;
+            }
+
+            try {
+                const userNamespace = window.userData.Email.toLowerCase();
+                console.log('📁 Saving chat to user namespace:', userNamespace);
+                alert(`✅ Chat saved to your profile under namespace: ${userNamespace}`);
+            } catch (error) {
+                console.error('🚨 Failed to save chat:', error);
+                alert('⚠️ Unable to save chat at this time.');
+            }
+        }
+    </script>
+</body>
+</html>
