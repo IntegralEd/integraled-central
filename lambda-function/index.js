@@ -6,11 +6,6 @@ const ssmClient = new SSMClient({ region: 'us-east-2' });
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
-    // Configure AWS SDK
-    AWS.config.update({
-        region: 'us-east-2'
-    });
-
     // Handle OPTIONS for CORS preflight
     if (event.requestContext.http.method === 'OPTIONS') {
         return {
@@ -59,7 +54,10 @@ exports.handler = async (event) => {
             return {
                 statusCode: 200,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': 'https://integraled.github.io',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
                 },
                 body: JSON.stringify({
                     pinecone_url: urlParam.Parameter.Value,
@@ -104,7 +102,10 @@ exports.handler = async (event) => {
         return {
             statusCode: 500,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': 'https://integraled.github.io',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
             },
             body: JSON.stringify({ 
                 error: 'Request failed',
