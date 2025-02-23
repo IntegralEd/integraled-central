@@ -1,5 +1,5 @@
 {
-  "name": "lambda-function",
+  "name": "get-pinecone-config",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,6 +10,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "aws-sdk": "^2.1692.0"
+    "aws-sdk": "^2.1550.0"
   }
 }
