@@ -4,7 +4,7 @@ export const queryPinecone = async (query, userNamespace) => {
   try {
     const config = await getConfig();
     
-    // First, get embedding from OpenAI with org and project IDs
+    // First, get embedding from OpenAI
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
