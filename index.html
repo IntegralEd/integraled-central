@@ -111,6 +111,34 @@
             }
         }
 
+        async function queryPinecone(vector, namespace = 'ns1') {
+            try {
+                // Use the Lambda proxy instead of calling Pinecone directly
+                const response = await fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors',
+                    body: JSON.stringify({
+                        namespace: namespace,
+                        topK: 3,
+                        includeMetadata: true,
+                        vector: vector
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`❌ Pinecone query failed: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('🚨 Pinecone query failed:', error);
+                throw error;
+            }
+        }
+
         function addSaveChatButton(container) {
             console.log('✅ Adding Save Chat button...');
             const saveButton = document.createElement('button');
