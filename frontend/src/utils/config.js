@@ -16,6 +16,22 @@ export const getConfig = async () => {
     }
 
     const config = await response.json();
+    
+    // Validate all required fields are present
+    const requiredFields = [
+      'pinecone_url',
+      'pinecone_api_key',
+      'pinecone_index',
+      'openai_api_key',
+      'openai_org_id',
+      'openai_project_id'
+    ];
+    
+    const missingFields = requiredFields.filter(field => !config[field]);
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    }
+
     return {
       pinecone_url: config.pinecone_url,
       pinecone_api_key: config.pinecone_api_key,
