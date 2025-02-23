@@ -31,10 +31,6 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
@@ -46,10 +42,6 @@ exports.handler = async (event) => {
         console.error('❌ Lambda error:', error);
         return {
             statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',
                 details: error.message,
