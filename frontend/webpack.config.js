@@ -4,7 +4,7 @@ module.exports = {
   entry: './src/components/Chat/index.jsx',
   output: {
     filename: 'chat-bundle.js',
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, '../public'),
     library: 'RAGChat',
     libraryTarget: 'window',
     libraryExport: 'default'
