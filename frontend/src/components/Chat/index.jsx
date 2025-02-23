@@ -20,7 +20,7 @@ const Chat = ({ defaultNamespace = 'NS1' }) => {
       try {
         // Test config access
         const config = await getConfig();
-        if (!config.pinecone_url || !config.PINECONE_API_KEY) {
+        if (!config.pinecone_url || !config.pinecone_api_key) {
           throw new Error('Invalid config');
         }
         setIsReady(true);
