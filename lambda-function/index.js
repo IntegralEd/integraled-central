@@ -39,6 +39,12 @@ exports.handler = async (event) => {
 
         return {
             statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': 'https://integraled.github.io',
+                'Access-Control-Allow-Methods': 'GET, POST',
+                'Access-Control-Allow-Headers': '*',
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
@@ -52,6 +58,12 @@ exports.handler = async (event) => {
         console.error('❌ Lambda error:', error);
         return {
             statusCode: 500,
+            headers: {
+                'Access-Control-Allow-Origin': 'https://integraled.github.io',
+                'Access-Control-Allow-Methods': 'GET, POST',
+                'Access-Control-Allow-Headers': '*',
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',
                 details: error.message,
