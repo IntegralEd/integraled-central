@@ -10,7 +10,7 @@ exports.handler = async (event) => {
 
     try {
         const ssm = new AWS.SSM();
-        const [urlParam, apiKeyParam, indexNameParam] = await Promise.all([
+        const [urlParam, apiKeyParam, indexNameParam, openaiKeyParam] = await Promise.all([
             ssm.getParameter({
                 Name: '/rag-bmore/prod/config/pinecone_url',
                 WithDecryption: false
@@ -22,6 +22,10 @@ exports.handler = async (event) => {
             ssm.getParameter({
                 Name: '/rag-bmore/prod/config/pinecone_index',
                 WithDecryption: false
+            }).promise(),
+            ssm.getParameter({
+                Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
+                WithDecryption: true
             }).promise()
         ]);
 
@@ -34,7 +38,7 @@ exports.handler = async (event) => {
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
                 pinecone_index: indexNameParam.Parameter.Value,
-                openai_api_key: process.env.OPENAI_API_KEY
+                openai_api_key: openaiKeyParam.Parameter.Value
             })
         };
     } catch (error) {

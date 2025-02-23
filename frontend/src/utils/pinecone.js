@@ -3,20 +3,40 @@ import { getConfig } from './config';
 export const queryPinecone = async (query, userNamespace) => {
   try {
     const config = await getConfig();
-    const pineconeUrl = `${config.pinecone_url}/query`;
     
-    // Query only ns1 namespace initially
+    // First, get embedding from OpenAI
+    const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.openai_api_key}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        input: query,
+        model: "text-embedding-ada-002"
+      })
+    });
+
+    if (!embeddingResponse.ok) {
+      throw new Error(`OpenAI embedding failed: ${embeddingResponse.status}`);
+    }
+
+    const embeddingData = await embeddingResponse.json();
+    const vector = embeddingData.data[0].embedding;
+
+    // Then query Pinecone with the vector
+    const pineconeUrl = `${config.pinecone_url}/query`;
     const response = await fetch(pineconeUrl, {
       method: 'POST',
       headers: {
-        'Api-Key': config.PINECONE_API_KEY,
+        'Api-Key': config.pinecone_api_key,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         namespace: 'ns1',
         topK: 3,
         includeMetadata: true,
-        vector: query  // Need to convert query to vector first
+        vector: vector
       })
     });
 
@@ -24,9 +44,11 @@ export const queryPinecone = async (query, userNamespace) => {
       throw new Error(`Pinecone query failed: ${response.status}`);
     }
 
-    return await response.json();
+    const results = await response.json();
+    console.log('Pinecone query results:', results);
+    return results;
   } catch (error) {
-    console.error('Pinecone query failed:', error);
+    console.error('Search failed:', error);
     return { matches: [] };
   }
 };
