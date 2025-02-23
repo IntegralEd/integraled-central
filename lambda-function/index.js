@@ -20,7 +20,7 @@ exports.handler = async (event) => {
                 WithDecryption: true
             }).promise(),
             ssm.getParameter({
-                Name: '/rag-bmore/prod/config/pinecone_index',
+                Name: '/rag-bmore/prod/config/PINECONE_INDEX_NAME',
                 WithDecryption: false
             }).promise(),
             ssm.getParameter({
