@@ -100,9 +100,13 @@ exports.handler = async (event) => {
                     };
                 }
 
-                // Add timeout to fetch
+                console.log('Processing vector query:', body.vector?.substring(0, 50));
+                
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 8000);
+                const timeout = setTimeout(() => {
+                    controller.abort();
+                    console.log('Request aborted due to timeout');
+                }, 8000); // Abort slightly before Lambda timeout
                 
                 const response = await fetch(pineconeEndpoint, {
                     method: 'POST',
@@ -142,9 +146,7 @@ exports.handler = async (event) => {
                         'Access-Control-Allow-Headers': 'Content-Type'
                     },
                     body: JSON.stringify({ 
-                        error: error.name === 'AbortError' 
-                            ? 'Request timed out' 
-                            : 'Internal server error'
+                        error: error.name === 'AbortError' ? 'Request timed out' : error.message
                     })
                 };
             }
