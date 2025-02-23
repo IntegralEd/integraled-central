@@ -111,6 +111,22 @@ An end-to-end RAG application (from scratch) based on FastAPI that processes PDF
 3. https://docs.unitlab.ai/ai-models/model-integration
 4. https://blog.unitlab.ai/
 
+## Recent Updates
+
+### GitHub Pages Integration
+- Deployed chat interface to GitHub Pages at `https://integraled.github.io/rag-bmore-app/`
+- Configured CORS in Lambda URL settings to allow both:
+  - Softr app domain (`https://bmore.softr.app`)
+  - GitHub Pages domain (`https://integraled.github.io`)
+- Simplified Lambda function by removing redundant CORS headers
+- Moved index.html to root for proper GitHub Pages serving
+
+### Lambda Configuration
+- Function: `get-pinecone-config`
+- Region: `us-east-2`
+- Runtime: `nodejs22.x`
+- CORS handling: Managed via Lambda URL configuration
+
 
 
 
