@@ -4,11 +4,13 @@ export const queryPinecone = async (query, userNamespace) => {
   try {
     const config = await getConfig();
     
-    // First, get embedding from OpenAI
+    // First, get embedding from OpenAI with org and project IDs
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.openai_api_key}`,
+        'OpenAI-Organization': config.openai_org_id,
+        'OpenAI-Project': config.openai_project_id,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -24,8 +26,8 @@ export const queryPinecone = async (query, userNamespace) => {
     const embeddingData = await embeddingResponse.json();
     const vector = embeddingData.data[0].embedding;
 
-    // Then query Pinecone with the vector
-    const pineconeUrl = `${config.pinecone_url}/query`;
+    // Then query Pinecone with the vector (using correct vectors path)
+    const pineconeUrl = `${config.pinecone_url}/vectors/query`;
     const response = await fetch(pineconeUrl, {
       method: 'POST',
       headers: {
@@ -33,7 +35,7 @@ export const queryPinecone = async (query, userNamespace) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        namespace: userNamespace || 'ns1',  // Use provided namespace or default
+        namespace: userNamespace || 'ns1',
         topK: 3,
         includeMetadata: true,
         vector: vector,
@@ -50,7 +52,7 @@ export const queryPinecone = async (query, userNamespace) => {
     return results;
   } catch (error) {
     console.error('Search failed:', error);
-    throw error; // Let the component handle the error
+    throw error;
   }
 };
 
