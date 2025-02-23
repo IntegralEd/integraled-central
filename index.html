@@ -48,7 +48,7 @@
     </style>
 </head>
 <body>
-    <div id="chat-container"></div>
+    <div id="rag-chat-root"></div>
     <script src="frontend/dist/chat-bundle.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function initializeChat() {
@@ -68,7 +68,7 @@
                 const config = await getConfig();
                 console.log('✅ Config loaded:', config);
 
-                const root = window.ReactDOM.createRoot(container);
+                const root = window.ReactDOM.createRoot(document.getElementById('rag-chat-root'));
                 root.render(window.React.createElement(window.RAGChat, { namespace: 'NS1' }));
                 console.log('✅ Chat component mounted with default namespace: NS1');
 
