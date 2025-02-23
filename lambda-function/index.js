@@ -33,7 +33,8 @@ exports.handler = async (event) => {
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
                 pinecone_api_key: apiKeyParam.Parameter.Value,
-                pinecone_index: indexNameParam.Parameter.Value
+                pinecone_index: indexNameParam.Parameter.Value,
+                openai_api_key: process.env.OPENAI_API_KEY
             })
         };
     } catch (error) {

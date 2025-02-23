@@ -3,80 +3,31 @@ import { getConfig } from './config';
 export const queryPinecone = async (query, userNamespace) => {
   try {
     const config = await getConfig();
-    const pineconeUrl = 'https://bemorelikebmore-d6g5fbi.svc.aped-4627-b74a.pinecone.io/query';
-    console.log('Querying Pinecone at:', pineconeUrl);
+    const pineconeUrl = `${config.pinecone_url}/query`;
     
-    // Query both ns1 (default) and user namespaces
-    const [defaultResults, userResults] = await Promise.all([
-      // Query ns1 namespace (default knowledge base)
-      fetch(pineconeUrl, {
-        method: 'POST',
-        headers: {
-          'Api-Key': config.PINECONE_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          namespace: 'ns1',
-          query: {
-            inputs: { text: query },
-            top_k: 3
-          },
-          fields: ["source_text", "category"]
-        })
-      }).then(res => res.json()),
-      
-      // Query user namespace for personal context
-      fetch(pineconeUrl, {
-        method: 'POST',
-        headers: {
-          'Api-Key': config.PINECONE_API_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          namespace: userNamespace,
-          query: {
-            inputs: { text: query },
-            top_k: 2
-          },
-          fields: ["source_text", "category"]
-        })
-      }).then(res => res.json()).catch(() => ({ result: { hits: [] } }))
-    ]);
+    // Query only ns1 namespace initially
+    const response = await fetch(pineconeUrl, {
+      method: 'POST',
+      headers: {
+        'Api-Key': config.PINECONE_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        namespace: 'ns1',
+        topK: 3,
+        includeMetadata: true,
+        vector: query  // Need to convert query to vector first
+      })
+    });
 
-    console.log('Default (ns1) results:', defaultResults);
-    console.log('User namespace results:', userResults);
+    if (!response.ok) {
+      throw new Error(`Pinecone query failed: ${response.status}`);
+    }
 
-    // Format matches from both results
-    const allMatches = [
-      ...(defaultResults.result?.hits || []).map(hit => ({
-        id: hit._id,
-        score: hit._score,
-        metadata: {
-          text: hit.fields.source_text,
-          category: hit.fields.category
-        }
-      })),
-      ...(userResults.result?.hits || []).map(hit => ({
-        id: hit._id,
-        score: hit._score,
-        metadata: {
-          text: hit.fields.source_text,
-          category: hit.fields.category
-        }
-      }))
-    ];
-
-    return {
-      matches: allMatches,
-      namespaces: {
-        default: defaultResults.result?.hits?.length || 0,
-        user: userResults.result?.hits?.length || 0
-      }
-    };
-
+    return await response.json();
   } catch (error) {
-    console.error('Pinecone query error:', error);
-    throw error;
+    console.error('Pinecone query failed:', error);
+    return { matches: [] };
   }
 };
 
