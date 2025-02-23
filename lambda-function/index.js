@@ -1,5 +1,7 @@
-const AWS = require('aws-sdk');
+const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const fetch = require('node-fetch');
+
+const ssmClient = new SSMClient({ region: 'us-east-2' });
 
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
@@ -23,35 +25,33 @@ exports.handler = async (event) => {
         };
     }
 
-    const ssm = new AWS.SSM();
-    
     try {
         // Get all config parameters regardless of request type
         const [urlParam, apiKeyParam, indexNameParam, openaiKeyParam, openaiOrgParam, openaiProjParam] = await Promise.all([
-            ssm.getParameter({
+            ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/config/pinecone_url',
                 WithDecryption: false
-            }).promise(),
-            ssm.getParameter({
+            })),
+            ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/secrets/PINECONE_API_KEY',
                 WithDecryption: true
-            }).promise(),
-            ssm.getParameter({
+            })),
+            ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/config/PINECONE_INDEX_NAME',
                 WithDecryption: false
-            }).promise(),
-            ssm.getParameter({
+            })),
+            ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
                 WithDecryption: true
-            }).promise(),
-            ssm.getParameter({
+            })),
+            ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/config/OPENAI_ORG_ID',
                 WithDecryption: false
-            }).promise(),
-            ssm.getParameter({
+            })),
+            ssmClient.send(new GetParameterCommand({
                 Name: '/rag-bmore/prod/config/OPENAI_PROJECT_ID',
                 WithDecryption: false
-            }).promise()
+            }))
         ]);
 
         // If GET request, return config

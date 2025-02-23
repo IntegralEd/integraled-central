@@ -10,7 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "aws-sdk": "^2.1550.0",
+    "@aws-sdk/client-ssm": "^3.0.0",
     "node-fetch": "^2.6.9"
   }
 }
