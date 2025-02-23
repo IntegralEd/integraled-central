@@ -32,7 +32,8 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
             },
             body: JSON.stringify({
                 pinecone_url: urlParam.Parameter.Value,
@@ -46,7 +47,8 @@ exports.handler = async (event) => {
         return {
             statusCode: 500,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
             },
             body: JSON.stringify({ 
                 error: 'Failed to fetch configuration',

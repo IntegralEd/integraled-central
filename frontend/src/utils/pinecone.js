@@ -33,10 +33,11 @@ export const queryPinecone = async (query, userNamespace) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        namespace: 'ns1',
+        namespace: userNamespace || 'ns1',  // Use provided namespace or default
         topK: 3,
         includeMetadata: true,
-        vector: vector
+        vector: vector,
+        includeValues: false
       })
     });
 
@@ -49,7 +50,7 @@ export const queryPinecone = async (query, userNamespace) => {
     return results;
   } catch (error) {
     console.error('Search failed:', error);
-    return { matches: [] };
+    throw error; // Let the component handle the error
   }
 };
 
