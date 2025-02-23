@@ -137,3 +137,4 @@ update_params.sh
 node_modules/
 *.zip
 lambda-function/node_modules/
+embedding.json

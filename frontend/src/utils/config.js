@@ -19,7 +19,7 @@ export const getConfig = async () => {
     return {
       pinecone_url: config.pinecone_url,
       pinecone_api_key: config.pinecone_api_key,
-      PINECONE_INDEX: config.pinecone_index,
+      pinecone_index: config.PINECONE_INDEX,
       openai_api_key: config.openai_api_key
     };
   } catch (error) {
