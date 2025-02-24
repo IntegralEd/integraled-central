@@ -127,6 +127,17 @@ An end-to-end RAG application (from scratch) based on FastAPI that processes PDF
 - Runtime: `nodejs22.x`
 - CORS handling: Managed via Lambda URL configuration
 
+┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────┐
+│ Softr App   │────▶│ GitHub Pages    │────▶│ AWS Lambda API  │────▶│ OpenAI API  │
+│ Storyline   │     │ (HTML/JS)       │     │ (Node.js)       │     │ (Assistant) │
+└─────────────┘     └─────────────────┘     └─────────────────┘     └─────────────┘
+                            │                        │
+                            │                        ▼
+                            │               ┌─────────────────┐
+                            └───────────────│ URL Parameters  │
+                                            │ (Authentication)│
+                                            └─────────────────┘
+
 
 
 
