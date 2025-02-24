@@ -6,25 +6,19 @@ const Chat = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
-        // Wait for credentials/context
-        const initChat = async () => {
-            try {
-                // Get URL params
-                const params = new URLSearchParams(window.location.search);
-                const userId = params.get('user_id');
-                const userEmail = params.get('email');
+        // Get user data from URL params only
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get('user_id');
+        const userEmail = params.get('email');
 
-                if (userId && userEmail) {
-                    setIsReady(true);
-                }
-            } catch (error) {
-                console.error('Init error:', error);
-            }
-        };
-
-        initChat();
+        if (userId && userEmail) {
+            setUser({ id: userId, email: userEmail });
+            setIsReady(true);
+            console.log('User authenticated via URL params:', { userId, userEmail });
+        }
     }, []);
 
     const handleSubmit = async (e) => {
