@@ -1,51 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>RAG Chat</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <base href="/rag-bmore-app/">
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <style>
-        /* ✅ Chat Container Styling */
-        #rag-chat-root {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        /* ✅ Error Message Styling */
-        .error-message {
-            color: #721c24;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
-            margin: 10px 0;
-        }
-
-        /* ✅ Save Chat Button */
-        .save-chat-btn {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .save-chat-btn:hover {
-            background: #0056b3;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>B'More Chat</title>
 </head>
 <body>
     <div id="rag-chat-root"></div>
@@ -53,72 +11,17 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="/rag-bmore-app/public/chat-bundle.js"></script>
 
-    <!-- Wait for chat-bundle to load before accessing its exports -->
     <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Wait for chat-bundle to be loaded and initialized
-            while (!window.RAGChat || !window.RAGChat.queryPinecone) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            
-            console.log('🔄 Initializing chat system...');
-            try {
-                if (!window.React || !window.ReactDOM || !window.RAGChat) {
-                    throw new Error('❌ Required dependencies not loaded.');
-                }
-
-                const container = document.getElementById('rag-chat-root');
-                if (!container) {
-                    throw new Error('❌ Chat container not found.');
-                }
-
-                console.log('🔍 Fetching config from Lambda...');
-                const config = await window.RAGChat.getConfig();
-                console.log('✅ Config loaded:', config);
-
-                const root = window.ReactDOM.createRoot(container);
-                root.render(window.React.createElement(window.RAGChat, { namespace: 'NS1' }));
-                console.log('✅ Chat component mounted with default namespace: NS1');
-
-                if (window.userData?.Email) {
-                    addSaveChatButton(container);
-                }
-            } catch (error) {
-                console.error('❌ Chat initialization failed:', error);
-                document.getElementById('rag-chat-root').innerHTML = `
-                    <div class="error-message">
-                        ⚠️ Failed to initialize chat. Please refresh the page or contact support.
-                        <br>
-                        <small>Error: ${error.message}</small>
-                    </div>
-                `;
-            }
-        });
-
-        function addSaveChatButton(container) {
-            console.log('✅ Adding Save Chat button...');
-            const saveButton = document.createElement('button');
-            saveButton.textContent = '💾 Save This Chat';
-            saveButton.className = 'save-chat-btn';
-            saveButton.onclick = saveChatToUserProfile;
-            container.appendChild(saveButton);
-        }
-
-        async function saveChatToUserProfile() {
-            if (!window.userData?.Email) {
-                alert('Please log in to save your chat.');
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('rag-chat-root');
+            if (!container) {
+                console.error('Chat container not found');
                 return;
             }
 
-            try {
-                const userNamespace = window.userData.Email.toLowerCase();
-                console.log('📁 Saving chat to user namespace:', userNamespace);
-                await window.RAGChat.queryPinecone(userNamespace);
-            } catch (error) {
-                console.error('🚨 Failed to save chat:', error);
-                alert('⚠️ Unable to save chat at this time.');
-            }
-        }
+            const root = window.ReactDOM.createRoot(container);
+            root.render(window.React.createElement(window.RAGChat));
+        });
     </script>
 </body>
 </html>
