@@ -21,16 +21,22 @@ exports.handler = async (event) => {
     if (event.requestContext.http.method === 'POST') {
         try {
             const body = JSON.parse(event.body);
-            const userMessage = body.message;
+            const { message, User_ID, Organization } = body;  // Match AirTable fields
 
-            // Create thread
+            // Create thread with metadata
             const threadResponse = await fetch('https://api.openai.com/v1/threads', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
                     'Content-Type': 'application/json',
                     'OpenAI-Beta': 'assistants=v1'
-                }
+                },
+                body: JSON.stringify({
+                    metadata: {
+                        user_id: User_ID,
+                        organization: Organization
+                    }
+                })
             });
 
             // ... rest of OpenAI Assistant code ...
