@@ -201,4 +201,23 @@ async function checkRunStatus(apiKey, threadId, runId) {
     }
     
     return status;
+}
+
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt}/${maxRetries} for ${url}`);
+      return await fetch(url, options);
+    } catch (error) {
+      console.log(`Attempt ${attempt} failed: ${error.message}`);
+      
+      if (attempt < maxRetries) {
+        const delay = Math.min(500 * Math.pow(2, attempt - 1), 3000);
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error; // Rethrow if all retries failed
+      }
+    }
+  }
 } 
