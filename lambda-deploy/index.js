@@ -72,8 +72,12 @@ exports.handler = async (event) => {
         }))
     ]);
 
-    // Only handle POST requests
-    if (event.requestContext.http.method === 'POST') {
+    // Check if this is a direct invocation or an HTTP request
+    const isDirectInvocation = !event.requestContext || !event.requestContext.http;
+    const isPostRequest = event.requestContext?.http?.method === 'POST';
+
+    // Process if it's either a direct invocation or a POST request
+    if (isDirectInvocation || isPostRequest) {
         try {
             // Create thread with metadata
             const threadResponse = await fetch('https://api.openai.com/v1/threads', {
