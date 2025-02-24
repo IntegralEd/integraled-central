@@ -57,60 +57,99 @@ const Chat = ({ defaultNamespace = 'NS1' }) => {
     setIsLoading(true);
 
     try {
-      // Get user's namespace
-      const namespace = getUserNamespace();
-      console.log('Using namespace:', namespace);
-      
-      // Query Pinecone
-      const searchResults = await queryPinecone(input, namespace);
-      console.log('Search results:', searchResults);
-      
-      // Format context from search results
-      const context = searchResults.matches
-        .map(match => match.metadata.text)
-        .join('\n\n');
-
-      // Get OpenAI config
-      const config = await getConfig();
-      
-      // Query OpenAI with context
-      const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${config.openai_api_key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful assistant. Answer questions based on the provided context."
-            },
-            {
-              role: "user",
-              content: `Context: ${context}\n\nQuestion: ${input}`
+        const config = await getConfig();
+        
+        // Create a thread or use existing one
+        const thread = await fetch('https://api.openai.com/v1/threads', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${config.openai_api_key}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
             }
-          ]
-        })
-      });
+        });
+        
+        const threadData = await thread.json();
+        
+        // Add message to thread
+        await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${config.openai_api_key}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            },
+            body: JSON.stringify({
+                role: 'user',
+                content: input
+            })
+        });
 
-      const data = await completion.json();
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: data.choices[0].message.content 
-      }]);
+        // Run the assistant
+        const run = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${config.openai_api_key}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            },
+            body: JSON.stringify({
+                assistant_id: "g-67acc6484b608191ba1f819f34fc467c-be-more-like-b-more",
+                instructions: "Use the Baltimore health database when specific information is needed."
+            })
+        });
+
+        // Poll for completion
+        const runData = await run.json();
+        const response = await pollRunStatus(threadData.id, runData.id, config.openai_api_key);
+
+        // Get messages after completion
+        const messages = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
+            headers: {
+                'Authorization': `Bearer ${config.openai_api_key}`,
+                'OpenAI-Beta': 'assistants=v1'
+            }
+        });
+
+        const messageData = await messages.json();
+        const lastMessage = messageData.data[0];
+
+        setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: lastMessage.content[0].text.value 
+        }]);
 
     } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error connecting to the database. Please try again later.' 
-      }]);
+        console.error('Chat error:', error);
+        setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: 'Sorry, I encountered an error. Please try again later.' 
+        }]);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
+
+// Helper function to poll run status
+const pollRunStatus = async (threadId, runId, apiKey) => {
+    while (true) {
+        const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'OpenAI-Beta': 'assistants=v1'
+            }
+        });
+
+        const data = await response.json();
+        if (data.status === 'completed') {
+            return data;
+        } else if (data.status === 'failed') {
+            throw new Error('Assistant run failed');
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+};
 
   return (
     <div className="chat-container">
