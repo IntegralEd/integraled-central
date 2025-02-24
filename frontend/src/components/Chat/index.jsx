@@ -6,46 +6,11 @@ import { getConfig } from '../../utils/config';
 import '../../styles/chat.css';
 
 // Main Chat component
-const Chat = ({ defaultNamespace = 'NS1' }) => {
-  const [isReady, setIsReady] = useState(false);
+const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [namespace, setNamespace] = useState(defaultNamespace);
-
-  // Initialize chat with config only
-  useEffect(() => {
-    const initializeChat = async () => {
-      try {
-        // Test config access
-        const config = await getConfig();
-        console.log('Config received:', config);
-        if (!config.pinecone_url || !config.pinecone_api_key || !config.pinecone_index) {
-          throw new Error('Invalid config: Missing required Pinecone configuration');
-        }
-        setIsReady(true);
-      } catch (error) {
-        console.error('Chat initialization error:', error);
-        setError('Failed to initialize chat. Please refresh the page.');
-      }
-    };
-
-    initializeChat();
-  }, []);
-
-  // Show loading or error state
-  if (!isReady) {
-    return (
-      <div className="chat-container">
-        {error ? (
-          <div className="error-message">{error}</div>
-        ) : (
-          <div className="loading-message">Initializing chat...</div>
-        )}
-      </div>
-    );
-  }
+  // const [namespace, setNamespace] = useState('ns1'); // Comment out namespace
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,99 +22,104 @@ const Chat = ({ defaultNamespace = 'NS1' }) => {
     setIsLoading(true);
 
     try {
-        const config = await getConfig();
-        
-        // Create a thread or use existing one
-        const thread = await fetch('https://api.openai.com/v1/threads', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${config.openai_api_key}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v1'
-            }
+      const config = await getConfig();
+      
+      // Create thread for GPT Assistant
+      const thread = await fetch('https://api.openai.com/v1/threads', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.openai_api_key}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v1'
+        }
+      });
+      
+      const threadData = await thread.json();
+      
+      // Add message to thread
+      await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.openai_api_key}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v1'
+        },
+        body: JSON.stringify({
+          role: 'user',
+          content: input
+        })
+      });
+
+      // Run the assistant
+      const run = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.openai_api_key}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v1'
+        },
+        body: JSON.stringify({
+          assistant_id: config.openai_assistant_id
+        })
+      });
+
+      const runData = await run.json();
+      
+      // Poll for completion
+      let completed = false;
+      while (!completed) {
+        const runStatus = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs/${runData.id}`, {
+          headers: {
+            'Authorization': `Bearer ${config.openai_api_key}`,
+            'OpenAI-Beta': 'assistants=v1'
+          }
         });
         
-        const threadData = await thread.json();
-        
-        // Add message to thread
-        await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${config.openai_api_key}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v1'
-            },
-            body: JSON.stringify({
-                role: 'user',
-                content: input
-            })
-        });
+        const statusData = await runStatus.json();
+        if (statusData.status === 'completed') {
+          completed = true;
+        } else if (statusData.status === 'failed') {
+          throw new Error('Assistant run failed');
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
 
-        // Run the assistant
-        const run = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/runs`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${config.openai_api_key}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v1'
-            },
-            body: JSON.stringify({
-                assistant_id: "g-67acc6484b608191ba1f819f34fc467c-be-more-like-b-more",
-                instructions: "Use the Baltimore health database when specific information is needed."
-            })
-        });
+      // Get messages after completion
+      const messages = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${config.openai_api_key}`,
+          'OpenAI-Beta': 'assistants=v1'
+        }
+      });
 
-        // Poll for completion
-        const runData = await run.json();
-        const response = await pollRunStatus(threadData.id, runData.id, config.openai_api_key);
+      const messageData = await messages.json();
+      const assistantMessage = messageData.data[0];
 
-        // Get messages after completion
-        const messages = await fetch(`https://api.openai.com/v1/threads/${threadData.id}/messages`, {
-            headers: {
-                'Authorization': `Bearer ${config.openai_api_key}`,
-                'OpenAI-Beta': 'assistants=v1'
-            }
-        });
-
-        const messageData = await messages.json();
-        const lastMessage = messageData.data[0];
-
-        setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: lastMessage.content[0].text.value 
-        }]);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: assistantMessage.content[0].text.value 
+      }]);
 
     } catch (error) {
-        console.error('Chat error:', error);
-        setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: 'Sorry, I encountered an error. Please try again later.' 
-        }]);
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error. Please try again later.' 
+      }]);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
-// Helper function to poll run status
-const pollRunStatus = async (threadId, runId, apiKey) => {
-    while (true) {
-        const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'OpenAI-Beta': 'assistants=v1'
-            }
-        });
-
-        const data = await response.json();
-        if (data.status === 'completed') {
-            return data;
-        } else if (data.status === 'failed') {
-            throw new Error('Assistant run failed');
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
+  // Comment out Pinecone-related useEffect
+  /*useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const namespaceParam = urlParams.get('namespace');
+    if (namespaceParam) {
+      setNamespace(namespaceParam);
     }
-};
+  }, []);*/
 
   return (
     <div className="chat-container">
