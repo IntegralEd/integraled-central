@@ -5,7 +5,7 @@ const ssmClient = new SSMClient();
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
-    // Get only the OpenAI parameters we need
+    // Get OpenAI parameters
     const [openaiKeyParam, assistantIdParam] = await Promise.all([
         ssmClient.send(new GetParameterCommand({
             Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
@@ -13,11 +13,12 @@ exports.handler = async (event) => {
         })),
         ssmClient.send(new GetParameterCommand({
             Name: '/rag-bmore/prod/config/OPENAI_ASSISTANT_ID',
-            WithDecryption: false
+            WithDecryption: true
         }))
     ]);
 
-    if (event.requestContext.http.method === 'GET') {
+    // Handle CORS preflight
+    if (event.requestContext.http.method === 'OPTIONS') {
         return {
             statusCode: 200,
             headers: {
@@ -32,15 +33,29 @@ exports.handler = async (event) => {
     } else if (event.requestContext.http.method === 'POST') {
         try {
             const body = JSON.parse(event.body);
-            const userMessage = body.message;
+            const userMessage = body.message;  // Expect message, not vector
 
-            // Process with OpenAI Assistant
-            // ... rest of the OpenAI Assistant code stays the same ...
+            // Create thread
+            const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
+                    'Content-Type': 'application/json',
+                    'OpenAI-Beta': 'assistants=v1'
+                }
+            });
+
+            // ... rest of OpenAI Assistant code ...
         } catch (error) {
-            console.error('Lambda error:', error);
+            console.error('Error:', error);
             return {
-                statusCode: error.name === 'AbortError' ? 504 : 502,
-                body: JSON.stringify({ error: error.message })
+                statusCode: 500,
+                headers: {
+                    'Access-Control-Allow-Origin': 'https://integraled.github.io'
+                },
+                body: JSON.stringify({ 
+                    error: 'Failed to process message' 
+                })
             };
         }
     }
