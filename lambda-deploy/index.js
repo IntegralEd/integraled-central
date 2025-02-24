@@ -17,11 +17,11 @@ exports.handler = async (event) => {
         }))
     ]);
 
-    // Handle request
+    // Only handle POST requests
     if (event.requestContext.http.method === 'POST') {
         try {
             const body = JSON.parse(event.body);
-            const { message, User_ID, Organization } = body;  // Match AirTable fields
+            const { message, User_ID, Organization } = body;
             
             console.log("📝 Processing message:", { message, User_ID, Organization });
 
@@ -112,8 +112,7 @@ exports.handler = async (event) => {
                 return {
                     statusCode: 202, // Accepted but processing
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         message: "I'm processing your request. This might take a moment. Please try asking again in a few seconds.",
@@ -140,8 +139,7 @@ exports.handler = async (event) => {
             return {
                 statusCode: 200,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     message: assistantMessage.content[0].text.value,
@@ -153,8 +151,7 @@ exports.handler = async (event) => {
             return {
                 statusCode: 500,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ 
                     error: 'An error occurred processing your request',
@@ -164,18 +161,14 @@ exports.handler = async (event) => {
         }
     }
     
-    // Handle OPTIONS for CORS
-    if (event.requestContext.http.method === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            },
-            body: ''
-        };
-    }
+    // Return 405 Method Not Allowed for non-POST requests
+    return {
+        statusCode: 405,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ error: 'Method not allowed' })
+    };
 };
 
 // Helper function to poll run status
