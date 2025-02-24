@@ -2,8 +2,63 @@ const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const fetch = require('node-fetch');
 const ssmClient = new SSMClient();
 
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt}/${maxRetries} for ${url}`);
+      return await fetch(url, options);
+    } catch (error) {
+      console.log(`Attempt ${attempt} failed: ${error.message}`);
+      
+      if (attempt < maxRetries) {
+        const delay = Math.min(500 * Math.pow(2, attempt - 1), 3000);
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        throw error; // Rethrow if all retries failed
+      }
+    }
+  }
+}
+
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
+    
+    // Check if the event has a body property and parse it if it's a string
+    let body;
+    if (event.body) {
+        try {
+            body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+        } catch (error) {
+            console.error("Error parsing request body:", error);
+            return {
+                statusCode: 400,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ error: 'Invalid request body' })
+            };
+        }
+    } else {
+        // If no body, check if the event itself contains the required fields
+        body = event;
+    }
+    
+    // Extract message and user info from the parsed body
+    const { message, User_ID, Organization, thread_id } = body;
+    
+    // Validate required fields
+    if (!message) {
+        return {
+            statusCode: 400,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ error: 'Message is required' })
+        };
+    }
+    
+    console.log("📝 Processing message:", { message, User_ID, Organization });
     
     // Get OpenAI parameters from SSM
     const [openaiKeyParam, assistantIdParam] = await Promise.all([
@@ -20,11 +75,6 @@ exports.handler = async (event) => {
     // Only handle POST requests
     if (event.requestContext.http.method === 'POST') {
         try {
-            const body = JSON.parse(event.body);
-            const { message, User_ID, Organization } = body;
-            
-            console.log("📝 Processing message:", { message, User_ID, Organization });
-
             // Create thread with metadata
             const threadResponse = await fetch('https://api.openai.com/v1/threads', {
                 method: 'POST',
@@ -201,23 +251,4 @@ async function checkRunStatus(apiKey, threadId, runId) {
     }
     
     return status;
-}
-
-async function fetchWithRetry(url, options, maxRetries = 3) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Attempt ${attempt}/${maxRetries} for ${url}`);
-      return await fetch(url, options);
-    } catch (error) {
-      console.log(`Attempt ${attempt} failed: ${error.message}`);
-      
-      if (attempt < maxRetries) {
-        const delay = Math.min(500 * Math.pow(2, attempt - 1), 3000);
-        console.log(`Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw error; // Rethrow if all retries failed
-      }
-    }
-  }
 } 

@@ -197,6 +197,22 @@
         }
         
         // Send a message to the Lambda function
+        async function fetchWithRetry(url, options, maxRetries = 2) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    console.error(`Attempt ${attempt} failed:`, error);
+                    if (attempt === maxRetries) throw error;
+                    await new Promise(r => setTimeout(r, 1000 * attempt));
+                }
+            }
+        }
+        
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message) return;
@@ -215,7 +231,7 @@
             
             try {
                 // Call Lambda function
-                const response = await fetch(LAMBDA_URL, {
+                const response = await fetchWithRetry(LAMBDA_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
