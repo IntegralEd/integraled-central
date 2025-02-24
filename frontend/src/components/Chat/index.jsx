@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { getConfig } from '../../utils/config';
 import '../../styles/chat.css';
 
 const Chat = () => {
@@ -51,10 +50,20 @@ const Chat = () => {
             <div className="message-list">
                 {messages.map((msg, i) => (
                     <div key={i} className={`message ${msg.role}`}>
-                        {msg.content}
+                        <div className="message-content">{msg.content}</div>
                     </div>
                 ))}
-                {isLoading && <div className="message assistant loading">Thinking...</div>}
+                {isLoading && (
+                    <div className="message assistant">
+                        <div className="message-content loading">
+                            <div className="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
             <form onSubmit={handleSubmit} className="input-area">
                 <input
