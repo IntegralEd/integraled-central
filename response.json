@@ -1,0 +1,1 @@
+{"errorType":"TypeError","errorMessage":"Cannot read properties of undefined (reading 'http')","trace":["TypeError: Cannot read properties of undefined (reading 'http')","    at exports.handler (/var/task/index.js:76:30)","    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"]}

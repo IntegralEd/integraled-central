@@ -21,6 +21,18 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
   }
 }
 
+function isHttpRequest(event) {
+    return event.requestContext && event.requestContext.http;
+}
+
+function getRequestMethod(event) {
+    return isHttpRequest(event) ? event.requestContext.http.method : 'DIRECT';
+}
+
+function getRequestOrigin(event) {
+    return isHttpRequest(event) ? (event.headers?.origin || 'unknown') : 'direct-invocation';
+}
+
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
@@ -73,8 +85,9 @@ exports.handler = async (event) => {
     ]);
 
     // Check if this is a direct invocation or an HTTP request
-    const isDirectInvocation = !event.requestContext || !event.requestContext.http;
-    const isPostRequest = event.requestContext?.http?.method === 'POST';
+    const requestMethod = getRequestMethod(event);
+    const isPostRequest = requestMethod === 'POST';
+    const isDirectInvocation = requestMethod === 'DIRECT' || !isHttpRequest(event);
 
     // Process if it's either a direct invocation or a POST request
     if (isDirectInvocation || isPostRequest) {
