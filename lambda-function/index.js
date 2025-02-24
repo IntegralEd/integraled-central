@@ -6,7 +6,15 @@ exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
     // Get all config parameters at the start
-    const [urlParam, apiKeyParam, indexParam, openaiKeyParam, openaiOrgParam, openaiProjectParam] = await Promise.all([
+    const [
+        urlParam, 
+        apiKeyParam, 
+        indexParam, 
+        openaiKeyParam, 
+        openaiOrgParam, 
+        openaiProjectParam,
+        assistantIdParam
+    ] = await Promise.all([
         ssmClient.send(new GetParameterCommand({
             Name: '/rag-bmore/prod/config/pinecone_url',
             WithDecryption: false
@@ -30,6 +38,10 @@ exports.handler = async (event) => {
         ssmClient.send(new GetParameterCommand({
             Name: '/rag-bmore/prod/config/OPENAI_PROJECT_ID',
             WithDecryption: false
+        })),
+        ssmClient.send(new GetParameterCommand({
+            Name: '/rag-bmore/prod/config/OPENAI_ASSISTANT_ID',
+            WithDecryption: false
         }))
     ]);
 
@@ -43,7 +55,8 @@ exports.handler = async (event) => {
                     pinecone_index: indexParam.Parameter.Value,
                     openai_api_key: openaiKeyParam.Parameter.Value,
                     openai_org_id: openaiOrgParam.Parameter.Value,
-                    openai_project_id: openaiProjectParam.Parameter.Value
+                    openai_project_id: openaiProjectParam.Parameter.Value,
+                    openai_assistant_id: assistantIdParam.Parameter.Value
                 })
             };
         } catch (error) {

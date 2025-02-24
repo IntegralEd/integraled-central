@@ -24,7 +24,8 @@ export const getConfig = async () => {
       'pinecone_index',
       'openai_api_key',
       'openai_org_id',
-      'openai_project_id'
+      'openai_project_id',
+      'openai_assistant_id'
     ];
     
     const missingFields = requiredFields.filter(field => !config[field]);
@@ -33,12 +34,8 @@ export const getConfig = async () => {
     }
 
     return {
-      pinecone_url: config.pinecone_url,
-      pinecone_api_key: config.pinecone_api_key,
-      pinecone_index: config.pinecone_index,
-      openai_api_key: config.openai_api_key,
-      openai_org_id: config.openai_org_id,
-      openai_project_id: config.openai_project_id
+      ...config,
+      openai_assistant_id: config.openai_assistant_id
     };
   } catch (error) {
     console.error('Failed to get config:', error);
