@@ -138,13 +138,21 @@
                 .then(response => response.json())
                 .then(data => {
                     // Add assistant response
-                    addMessage('assistant', data.message || 'Sorry, I couldn\'t process your request.');
+                    if (data.processing) {
+                        // Show processing message
+                        addMessage('assistant', data.message);
+                        
+                        // Enable the button so user can try again
+                        sendButton.disabled = false;
+                    } else {
+                        // Show normal response
+                        addMessage('assistant', data.message || 'Sorry, I couldn\'t process your request.');
+                        sendButton.disabled = false;
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     addMessage('assistant', 'Sorry, there was an error processing your request. Please try again.');
-                })
-                .finally(() => {
                     sendButton.disabled = false;
                 });
             }

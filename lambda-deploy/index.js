@@ -45,7 +45,7 @@ exports.handler = async (event) => {
             console.log("🧵 Thread created:", thread.id);
             
             // Add message to thread
-            const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+            await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
@@ -74,12 +74,54 @@ exports.handler = async (event) => {
             const run = await runResponse.json();
             console.log("🏃 Run created:", run.id);
             
-            // Poll for completion
-            let runStatus = await checkRunStatus(
-                openaiKeyParam.Parameter.Value, 
-                thread.id, 
-                run.id
-            );
+            // Set a timeout for polling
+            const startTime = Date.now();
+            const TIMEOUT_THRESHOLD = 8000; // 8 seconds (2s buffer for Lambda)
+            
+            // Poll for completion with timeout
+            let status = 'queued';
+            let timeoutReached = false;
+            
+            while (status !== 'completed' && status !== 'failed' && !timeoutReached) {
+                console.log(`⏳ Run status: ${status}`);
+                
+                // Check if we're approaching timeout
+                if (Date.now() - startTime > TIMEOUT_THRESHOLD) {
+                    console.log("⚠️ Approaching Lambda timeout, returning early");
+                    timeoutReached = true;
+                    break;
+                }
+                
+                // Wait 1 second between polls
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const response = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
+                        'Content-Type': 'application/json',
+                        'OpenAI-Beta': 'assistants=v1'
+                    }
+                });
+                
+                const runStatus = await response.json();
+                status = runStatus.status;
+            }
+            
+            // If we reached timeout, return a processing message
+            if (timeoutReached) {
+                return {
+                    statusCode: 202, // Accepted but processing
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    body: JSON.stringify({
+                        message: "I'm processing your request. This might take a moment. Please try asking again in a few seconds.",
+                        thread_id: thread.id,
+                        processing: true
+                    })
+                };
+            }
             
             // Get messages
             const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
