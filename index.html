@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Baltimore Maternal Health Q&A</title>
+    <title>Baltimore Maternal Health Assistant</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
         }
         .chat-container {
             display: flex;
@@ -17,7 +17,7 @@
             height: 100vh;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            background: #fff;
         }
         .message-list {
             flex: 1;
@@ -29,7 +29,7 @@
         }
         .message {
             display: flex;
-            margin-bottom: 16px;
+            margin-bottom: 8px;
         }
         .message.user {
             justify-content: flex-end;
@@ -53,18 +53,18 @@
         .input-area {
             display: flex;
             gap: 10px;
-            padding: 20px;
+            padding: 16px;
             background: white;
             border-top: 1px solid #eee;
         }
-        input {
+        #messageInput {
             flex: 1;
-            padding: 12px;
+            padding: 12px 16px;
             border: 1px solid #ddd;
             border-radius: 24px;
             font-size: 14px;
         }
-        button {
+        #sendButton {
             padding: 12px 24px;
             background: #007AFF;
             color: white;
@@ -73,58 +73,149 @@
             font-size: 14px;
             cursor: pointer;
         }
-        button:disabled {
+        #sendButton:disabled {
             background: #ccc;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #888;
+            border-radius: 50%;
+            display: inline-block;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 100% {
+                transform: scale(0.7);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .welcome-banner {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid #007AFF;
+        }
+        .welcome-banner h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+        }
+        .welcome-banner p {
+            margin: 0;
+            color: #666;
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
-        <div class="message-list" id="messageList"></div>
+        <div class="message-list" id="messageList">
+            <!-- Messages will be added here -->
+        </div>
         <div class="input-area">
-            <input type="text" id="messageInput" placeholder="Type your message...">
+            <input type="text" id="messageInput" placeholder="Ask about maternal health...">
             <button id="sendButton">Send</button>
         </div>
     </div>
 
     <script>
-        // Simple chat implementation
-        document.addEventListener('DOMContentLoaded', () => {
-            const messageList = document.getElementById('messageList');
-            const messageInput = document.getElementById('messageInput');
-            const sendButton = document.getElementById('sendButton');
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('User_ID') || 'anonymous';
+        const organization = urlParams.get('Organization') || 'default';
+        const userName = urlParams.get('Name') || '';
+        const userEmail = urlParams.get('Email') || '';
+        
+        // Log user context for debugging
+        console.log('👤 User context:', { userId, organization, userName, userEmail });
+        
+        // DOM elements
+        const messageList = document.getElementById('messageList');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        
+        // Lambda URL
+        const LAMBDA_URL = 'https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws';
+        
+        // Thread ID storage
+        let threadId = localStorage.getItem(`chat_thread_${userId}`);
+        
+        // Add welcome message
+        function addWelcomeMessage() {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'welcome-banner';
+            welcomeDiv.innerHTML = `
+                <h3>Welcome${userName ? ', ' + userName : ''}!</h3>
+                <p>I'm your Baltimore Maternal Health Assistant. How can I help you today?</p>
+            `;
+            messageList.appendChild(welcomeDiv);
             
-            // Get URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('User_ID') || 'anonymous';
-            const organization = urlParams.get('Organization') || 'default';
+            // Add first assistant message
+            addMessage('assistant', 'You can ask me about maternal health services in Baltimore, eligibility requirements, or general maternal health questions.');
+        }
+        
+        // Add a message to the chat
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
             
-            console.log('User context:', { userId, organization });
+            if (content === 'loading') {
+                messageDiv.innerHTML = `
+                    <div class="message-content loading">
+                        <div class="typing-indicator">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+            }
             
-            // Add welcome message
-            addMessage('assistant', 'Hello! I\'m here to help with maternal health information. How can I assist you today?');
+            messageList.appendChild(messageDiv);
+            messageList.scrollTop = messageList.scrollHeight;
+            return messageDiv;
+        }
+        
+        // Send a message to the Lambda function
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
             
-            // Handle send button click
-            sendButton.addEventListener('click', sendMessage);
-            messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') sendMessage();
-            });
+            // Add user message to chat
+            addMessage('user', message);
             
-            function sendMessage() {
-                const message = messageInput.value.trim();
-                if (!message) return;
-                
-                // Add user message to chat
-                addMessage('user', message);
-                
-                // Clear input
-                messageInput.value = '';
-                
-                // Disable button while processing
-                sendButton.disabled = true;
-                
+            // Clear input
+            messageInput.value = '';
+            
+            // Disable button while processing
+            sendButton.disabled = true;
+            
+            // Add loading indicator
+            const loadingMessage = addMessage('assistant', 'loading');
+            
+            try {
                 // Call Lambda function
-                fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws', {
+                const response = await fetch(LAMBDA_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -132,46 +223,50 @@
                     body: JSON.stringify({
                         message: message,
                         User_ID: userId,
-                        Organization: organization
+                        Organization: organization,
+                        thread_id: threadId
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Add assistant response
-                    if (data.processing) {
-                        // Show processing message
-                        addMessage('assistant', data.message);
-                        
-                        // Enable the button so user can try again
-                        sendButton.disabled = false;
-                    } else {
-                        // Show normal response
-                        addMessage('assistant', data.message || 'Sorry, I couldn\'t process your request.');
-                        sendButton.disabled = false;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    addMessage('assistant', 'Sorry, there was an error processing your request. Please try again.');
-                    sendButton.disabled = false;
                 });
+                
+                const data = await response.json();
+                
+                // Remove loading indicator
+                messageList.removeChild(loadingMessage);
+                
+                // Store thread ID if returned
+                if (data.thread_id) {
+                    threadId = data.thread_id;
+                    localStorage.setItem(`chat_thread_${userId}`, threadId);
+                }
+                
+                // Add assistant response
+                if (data.processing) {
+                    // Show processing message
+                    addMessage('assistant', data.message);
+                } else {
+                    // Show normal response
+                    addMessage('assistant', data.message || 'Sorry, I couldn\'t process your request.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                // Remove loading indicator
+                messageList.removeChild(loadingMessage);
+                // Show error message
+                addMessage('assistant', 'Sorry, there was an error processing your request. Please try again.');
+            } finally {
+                // Re-enable button
+                sendButton.disabled = false;
             }
-            
-            function addMessage(role, content) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${role}`;
-                
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'message-content';
-                contentDiv.textContent = content;
-                
-                messageDiv.appendChild(contentDiv);
-                messageList.appendChild(messageDiv);
-                
-                // Scroll to bottom
-                messageList.scrollTop = messageList.scrollHeight;
-            }
+        }
+        
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
         });
+        
+        // Initialize chat
+        addWelcomeMessage();
     </script>
 </body>
 </html>

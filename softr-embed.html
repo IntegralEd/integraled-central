@@ -1,0 +1,285 @@
+<!-- Baltimore Maternal Health Assistant - Softr Embed Code -->
+<!-- Version 1.0.1 - Last updated: 2023-06-15 -->
+
+<div id="bmore-chat-container">
+  <div id="bmore-loading-message">
+    <h3>Welcome <span id="bmore-user-name">there</span>!</h3>
+    <p>We're preparing your personalized maternal health assistant...</p>
+  </div>
+  <div id="bmore-iframe-container" style="display: none; width: 100%; height: 600px;"></div>
+</div>
+
+<script>
+  // Use a self-executing function to avoid global namespace pollution
+  (function() {
+    // Configuration
+    const GITHUB_PAGES_URL = 'https://integraled.github.io/rag-bmore-app/';
+    const CHAT_VERSION = '1.0.1'; // Update this when making changes to force cache refresh
+    const DEBUG_MODE = false; // Set to true to enable detailed console logging
+    
+    // Logger function that respects debug mode
+    function log(type, ...args) {
+      if (DEBUG_MODE || type === 'error') {
+        console[type](...args);
+      }
+    }
+    
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Safely get elements with null checks
+      const chatContainer = document.getElementById('bmore-chat-container');
+      const loadingMessage = document.getElementById('bmore-loading-message');
+      const userNameSpan = document.getElementById('bmore-user-name');
+      const iframeContainer = document.getElementById('bmore-iframe-container');
+      
+      // Check if all elements exist
+      if (!chatContainer || !loadingMessage || !userNameSpan || !iframeContainer) {
+        log('error', 'Required DOM elements not found. Chat container setup failed.');
+        return;
+      }
+      
+      // Function to safely update user name
+      function updateUserName(name) {
+        if (userNameSpan) {
+          userNameSpan.textContent = name || 'there';
+        }
+      }
+      
+      // Function to create and load the iframe
+      function createIframe(userData) {
+        try {
+          // Extract user information
+          const userId = userData?.airtable_record_id || userData?.record_id || 'anonymous';
+          const userName = userData?.Name || userData?.name || 'there';
+          const userEmail = userData?.Email || userData?.email || '';
+          const userOrg = userData?.Organization || userData?.organization || 'Softr';
+          
+          // Update the welcome message with the user's name
+          updateUserName(userName);
+          
+          // Log the user data for debugging
+          log('info', 'User Data Loaded:', {
+            userId,
+            userName,
+            userEmail: userEmail ? '✓' : '✗', // Don't log actual email
+            userOrg
+          });
+          
+          // Construct the iframe URL with proper encoding
+          const iframeUrl = new URL(GITHUB_PAGES_URL);
+          iframeUrl.searchParams.append('User_ID', userId);
+          iframeUrl.searchParams.append('Organization', userOrg);
+          iframeUrl.searchParams.append('Name', userName);
+          if (userEmail) iframeUrl.searchParams.append('Email', userEmail);
+          iframeUrl.searchParams.append('v', CHAT_VERSION); // Add version to prevent caching
+          
+          // Create the iframe element
+          const iframe = document.createElement('iframe');
+          iframe.src = iframeUrl.toString();
+          iframe.width = '100%';
+          iframe.height = '100%';
+          iframe.frameBorder = '0';
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+          iframe.id = 'bmore-chat-iframe';
+          iframe.title = 'Baltimore Maternal Health Assistant';
+          iframe.setAttribute('aria-label', 'Chat with Baltimore Maternal Health Assistant');
+          
+          // Add load event listener
+          iframe.onload = function() {
+            log('info', 'Chat iframe loaded successfully');
+            // Hide loading message and show iframe
+            if (loadingMessage) loadingMessage.style.display = 'none';
+            if (iframeContainer) iframeContainer.style.display = 'block';
+          };
+          
+          // Add error event listener
+          iframe.onerror = function() {
+            log('error', 'Failed to load chat iframe');
+            if (loadingMessage) {
+              loadingMessage.innerHTML = '<h3>Something went wrong</h3><p>We couldn\'t load the chat assistant. Please refresh the page or try again later.</p>';
+            }
+          };
+          
+          // Add the iframe to the container
+          if (iframeContainer) {
+            iframeContainer.innerHTML = '';
+            iframeContainer.appendChild(iframe);
+          }
+          
+        } catch (error) {
+          log('error', 'Error creating iframe:', error);
+          if (loadingMessage) {
+            loadingMessage.innerHTML = '<h3>Something went wrong</h3><p>We couldn\'t load the chat assistant. Please refresh the page or try again later.</p>';
+          }
+        }
+      }
+      
+      // Get URL parameters directly
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlUserId = urlParams.get('user_id');
+      const urlName = urlParams.get('name');
+      const urlEmail = urlParams.get('email');
+      const urlOrg = urlParams.get('organization');
+      
+      // If URL parameters exist, use them directly
+      if (urlUserId) {
+        log('info', 'Using URL parameters for user identification');
+        const userData = {
+          record_id: urlUserId,
+          Name: urlName || 'User',
+          Email: urlEmail || '',
+          Organization: urlOrg || 'Softr'
+        };
+        createIframe(userData);
+        return;
+      }
+      
+      // Check if we're in the Softr environment
+      if (typeof Softr !== 'undefined') {
+        log('info', 'Softr environment detected');
+        
+        // Wait for Softr to be ready
+        if (typeof Softr.ready === 'function') {
+          Softr.ready(() => {
+            log('info', 'Softr is ready');
+            
+            // Get the current user data
+            if (typeof Softr.user?.get === 'function') {
+              log('info', 'Attempting to get Softr user data');
+              
+              Softr.user.get()
+                .then(userData => {
+                  if (userData && userData.airtable_record_id) {
+                    log('info', 'Authenticated Softr user found');
+                    createIframe(userData);
+                  } else {
+                    // Handle case where user is not logged in
+                    log('info', 'No authenticated Softr user found, using anonymous mode');
+                    updateUserName('there');
+                    if (loadingMessage) {
+                      loadingMessage.innerHTML = '<h3>Welcome there!</h3><p>For a personalized experience, please log in.</p><p>Loading anonymous chat...</p>';
+                    }
+                    
+                    // Create anonymous iframe after a short delay
+                    setTimeout(() => {
+                      createIframe({ record_id: 'anonymous' });
+                    }, 2000);
+                  }
+                })
+                .catch(error => {
+                  log('error', 'Error getting Softr user data:', error);
+                  // Create anonymous iframe as fallback
+                  createIframe({ record_id: 'anonymous' });
+                });
+            } else {
+              log('warn', 'Softr.user.get not available');
+              createIframe({ record_id: 'anonymous' });
+            }
+          });
+        } else {
+          log('warn', 'Softr.ready not available');
+          createIframe({ record_id: 'anonymous' });
+        }
+      } else {
+        // Not in Softr environment, create iframe with default values
+        log('warn', 'Softr not detected, using default values');
+        createIframe({ record_id: 'anonymous' });
+      }
+      
+      // Add window message listener for potential cross-frame communication
+      window.addEventListener('message', function(event) {
+        // Verify origin for security
+        if (event.origin !== new URL(GITHUB_PAGES_URL).origin) return;
+        
+        // Handle messages from the iframe
+        if (event.data && event.data.type === 'bmore-chat-ready') {
+          log('info', 'Received ready message from chat iframe');
+        }
+      });
+    });
+  })();
+</script>
+
+<style>
+  #bmore-chat-container {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: white;
+  }
+  
+  #bmore-loading-message {
+    padding: 40px 20px;
+    text-align: center;
+    background: #f9f9f9;
+    border-radius: 8px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  #bmore-loading-message h3 {
+    margin-bottom: 16px;
+    color: #333;
+    font-size: 24px;
+  }
+  
+  #bmore-loading-message p {
+    color: #666;
+    font-size: 16px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  
+  #bmore-iframe-container {
+    border-radius: 8px;
+    overflow: hidden;
+    height: 600px;
+    background: white;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    #bmore-chat-container {
+      border-radius: 0;
+      box-shadow: none;
+      margin: 0;
+      width: 100%;
+    }
+    
+    #bmore-iframe-container {
+      height: 500px;
+    }
+  }
+  
+  /* Mobile portrait mode */
+  @media (max-width: 480px) {
+    #bmore-iframe-container {
+      height: 400px;
+    }
+  }
+  
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    #bmore-chat-container {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    #bmore-loading-message {
+      background: #2a2a2a;
+    }
+    
+    #bmore-loading-message h3 {
+      color: #e0e0e0;
+    }
+    
+    #bmore-loading-message p {
+      color: #b0b0b0;
+    }
+  }
+</style> 

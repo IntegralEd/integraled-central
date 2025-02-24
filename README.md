@@ -138,6 +138,26 @@ An end-to-end RAG application (from scratch) based on FastAPI that processes PDF
                                             │ (Authentication)│
                                             └─────────────────┘
 
+## Custom GPT Integration with Softr
+
+### Overview
+This project embeds a custom GPT-powered chat interface directly in Softr applications.
+
+### Key Components
+1. **Lambda Function**: Handles communication with OpenAI's Assistants API
+2. **GitHub Pages**: Hosts static assets for the chat interface
+3. **Softr Integration**: Embeds the chat interface via HTML component
+
+### Setup
+1. Deploy the Lambda function with proper environment variables
+2. Add the chat interface HTML to a Softr HTML component
+3. Pass Softr user context to maintain conversation history
+
+### User Experience
+- Each user gets a persistent conversation thread
+- Chat history is maintained between sessions
+- The interface is fully embedded in your Softr application
+
 
 
 
