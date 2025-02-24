@@ -3,10 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Baltimore Healthy Babies Q&A</title>
-    <script src="/rag-bmore-app/chat-bundle.js" defer></script>
+    <title>Baltimore Maternal Health Q&A</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .message-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .message {
+            display: flex;
+            margin-bottom: 16px;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.4;
+        }
+        .user .message-content {
+            background-color: #007AFF;
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+        }
+        .assistant .message-content {
+            background-color: #F0F0F0;
+            color: #000;
+            border-radius: 18px 18px 18px 4px;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 24px;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+    </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div class="chat-container">
+        <div class="message-list" id="messageList"></div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type your message...">
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Simple chat implementation
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageList = document.getElementById('messageList');
+            const messageInput = document.getElementById('messageInput');
+            const sendButton = document.getElementById('sendButton');
+            
+            // Get URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('User_ID') || 'anonymous';
+            const organization = urlParams.get('Organization') || 'default';
+            
+            console.log('User context:', { userId, organization });
+            
+            // Add welcome message
+            addMessage('assistant', 'Hello! I\'m here to help with maternal health information. How can I assist you today?');
+            
+            // Handle send button click
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+            
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                addMessage('user', message);
+                
+                // Clear input
+                messageInput.value = '';
+                
+                // Disable button while processing
+                sendButton.disabled = true;
+                
+                // Call Lambda function
+                fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        User_ID: userId,
+                        Organization: organization
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Add assistant response
+                    addMessage('assistant', data.message || 'Sorry, I couldn\'t process your request.');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    addMessage('assistant', 'Sorry, there was an error processing your request. Please try again.');
+                })
+                .finally(() => {
+                    sendButton.disabled = false;
+                });
+            }
+            
+            function addMessage(role, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${role}`;
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'message-content';
+                contentDiv.textContent = content;
+                
+                messageDiv.appendChild(contentDiv);
+                messageList.appendChild(messageDiv);
+                
+                // Scroll to bottom
+                messageList.scrollTop = messageList.scrollHeight;
+            }
+        });
+    </script>
 </body>
 </html>
