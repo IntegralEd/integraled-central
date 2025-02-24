@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import '../../styles/chat.css';
 
 const Chat = () => {
-    const [isReady, setIsReady] = useState(false);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -18,15 +17,8 @@ const Chat = () => {
         console.log('🔍 URL Parameters:', { User_ID, Email, Organization });
 
         if (User_ID) {
-            setUser({ 
-                id: User_ID, 
-                email: Email,
-                organization: Organization 
-            });
-            setIsReady(true);
+            setUser({ id: User_ID, email: Email, organization: Organization });
             console.log('✅ User authenticated:', { User_ID, Email, Organization });
-        } else {
-            console.warn('⚠️ Missing User_ID in URL parameters');
         }
     }, []);
 
@@ -36,42 +28,37 @@ const Chat = () => {
 
         console.log('📤 Sending message:', { 
             message: input,
-            User_ID: user.id,
-            Organization: user.organization 
+            user: user?.id,
+            organization: user?.organization 
         });
 
-        const userMessage = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
-        setInput('');
         setIsLoading(true);
-
         try {
-            const response = await fetch('https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws/', {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
                 },
-                body: JSON.stringify({ message: input })
+                body: JSON.stringify({
+                    model: 'gpt-4-turbo-preview',
+                    messages: [...messages, { role: 'user', content: input }]
+                })
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to get response');
-            }
-
+            console.log('📥 Response status:', response.status);
             const data = await response.json();
-            setMessages(prev => [...prev, { 
-                role: 'assistant', 
-                content: data.message 
-            }]);
+            console.log('📦 Response data:', data);
 
+            setMessages(prev => [...prev, 
+                { role: 'user', content: input },
+                data.choices[0].message
+            ]);
         } catch (error) {
-            console.error('Chat error:', error);
-            setMessages(prev => [...prev, { 
-                role: 'assistant', 
-                content: 'Sorry, I encountered an error. Please try again later.' 
-            }]);
+            console.error('❌ Chat error:', error);
         } finally {
             setIsLoading(false);
+            setInput('');
         }
     };
 
