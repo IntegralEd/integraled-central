@@ -46,26 +46,18 @@ exports.handler = async (event) => {
     ]);
 
     if (event.requestContext.http.method === 'GET') {
-        try {
-            return {
-                statusCode: 200,
-                body: JSON.stringify({
-                    pinecone_url: urlParam.Parameter.Value,
-                    pinecone_api_key: apiKeyParam.Parameter.Value,
-                    pinecone_index: indexParam.Parameter.Value,
-                    openai_api_key: openaiKeyParam.Parameter.Value,
-                    openai_org_id: openaiOrgParam.Parameter.Value,
-                    openai_project_id: openaiProjectParam.Parameter.Value,
-                    openai_assistant_id: assistantIdParam.Parameter.Value
-                })
-            };
-        } catch (error) {
-            console.error('Error fetching config:', error);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: 'Failed to fetch configuration' })
-            };
-        }
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                pinecone_url: urlParam.Parameter.Value,
+                pinecone_api_key: apiKeyParam.Parameter.Value,
+                pinecone_index: indexParam.Parameter.Value,
+                openai_api_key: openaiKeyParam.Parameter.Value,
+                openai_org_id: openaiOrgParam.Parameter.Value,
+                openai_project_id: openaiProjectParam.Parameter.Value,
+                openai_assistant_id: assistantIdParam.Parameter.Value
+            })
+        };
     } else if (event.requestContext.http.method === 'POST') {
         try {
             const body = JSON.parse(event.body);
