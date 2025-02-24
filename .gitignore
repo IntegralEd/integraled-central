@@ -144,7 +144,6 @@ node_modules/
 # Build outputs
 **/dist/
 **/build/
-public/chat-bundle.js
 
 # Environment files
 .env.local
