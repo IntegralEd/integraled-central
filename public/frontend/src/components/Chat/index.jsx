@@ -1,25 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import '../../styles/chat.css';
 
 const Chat = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [user, setUser] = useState(null);
-    
-    // Extract user info from URL parameters
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const userId = params.get('User_ID') || 'anonymous';
-        const organization = params.get('Organization') || 'default';
-        
-        setUser({
-            id: userId,
-            organization: organization
-        });
-        
-        console.log('👤 User context:', { userId, organization });
-    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,10 +30,7 @@ const Chat = () => {
                 })
             });
 
-            console.log('📥 Response status:', response.status);
             const data = await response.json();
-            console.log('📦 Response data:', data);
-
             setMessages(prev => [...prev, 
                 { role: 'user', content: input },
                 { role: 'assistant', content: data.message }
@@ -94,4 +76,4 @@ const Chat = () => {
     );
 };
 
-export default Chat; 
+export default Chat;

@@ -22,6 +22,8 @@ exports.handler = async (event) => {
         try {
             const body = JSON.parse(event.body);
             const { message, User_ID, Organization } = body;  // Match AirTable fields
+            
+            console.log("📝 Processing message:", { message, User_ID, Organization });
 
             // Create thread with metadata
             const threadResponse = await fetch('https://api.openai.com/v1/threads', {
@@ -38,29 +40,130 @@ exports.handler = async (event) => {
                     }
                 })
             });
-
-            // ... rest of OpenAI Assistant code ...
-
+            
+            const thread = await threadResponse.json();
+            console.log("🧵 Thread created:", thread.id);
+            
+            // Add message to thread
+            const messageResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
+                    'Content-Type': 'application/json',
+                    'OpenAI-Beta': 'assistants=v1'
+                },
+                body: JSON.stringify({
+                    role: 'user',
+                    content: message
+                })
+            });
+            
+            // Run the assistant
+            const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
+                    'Content-Type': 'application/json',
+                    'OpenAI-Beta': 'assistants=v1'
+                },
+                body: JSON.stringify({
+                    assistant_id: assistantIdParam.Parameter.Value
+                })
+            });
+            
+            const run = await runResponse.json();
+            console.log("🏃 Run created:", run.id);
+            
+            // Poll for completion
+            let runStatus = await checkRunStatus(
+                openaiKeyParam.Parameter.Value, 
+                thread.id, 
+                run.id
+            );
+            
+            // Get messages
+            const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
+                headers: {
+                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
+                    'Content-Type': 'application/json',
+                    'OpenAI-Beta': 'assistants=v1'
+                }
+            });
+            
+            const messages = await messagesResponse.json();
+            const assistantMessage = messages.data.find(m => m.role === 'assistant');
+            
+            console.log("💬 Assistant response:", assistantMessage.content[0].text.value.substring(0, 50) + "...");
+            
             return {
                 statusCode: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 body: JSON.stringify({
-                    message: assistantMessage.content[0].text.value
+                    message: assistantMessage.content[0].text.value,
+                    thread_id: thread.id
                 })
             };
         } catch (error) {
-            console.error('Error:', error);
+            console.error("❌ Error:", error);
             return {
                 statusCode: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
                 body: JSON.stringify({ 
-                    error: 'Failed to process message' 
+                    error: 'An error occurred processing your request',
+                    details: error.message
                 })
             };
         }
     }
+    
+    // Handle OPTIONS for CORS
+    if (event.requestContext.http.method === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
+            body: ''
+        };
+    }
+};
 
-    // Invalid method
-    return {
-        statusCode: 405,
-        body: JSON.stringify({ error: 'Method not allowed' })
-    };
-}; 
+// Helper function to poll run status
+async function checkRunStatus(apiKey, threadId, runId) {
+    let status = 'queued';
+    
+    while (status !== 'completed' && status !== 'failed') {
+        console.log(`⏳ Run status: ${status}`);
+        
+        // Wait 1 second between polls
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const response = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            }
+        });
+        
+        const run = await response.json();
+        status = run.status;
+        
+        // If we're taking too long, return what we have
+        if (['queued', 'in_progress'].includes(status) && 
+            (Date.now() - new Date(run.created_at).getTime() > 25000)) {
+            console.log("⚠️ Run taking too long, returning early");
+            return run;
+        }
+    }
+    
+    return status;
+} 
