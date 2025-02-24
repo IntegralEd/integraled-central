@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../../styles/chat.css';
 
 const Chat = () => {
+    const [isReady, setIsReady] = useState(false);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        // Wait for credentials/context
+        const initChat = async () => {
+            try {
+                // Get URL params
+                const params = new URLSearchParams(window.location.search);
+                const userId = params.get('user_id');
+                const userEmail = params.get('email');
+
+                if (userId && userEmail) {
+                    setIsReady(true);
+                }
+            } catch (error) {
+                console.error('Init error:', error);
+            }
+        };
+
+        initChat();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
