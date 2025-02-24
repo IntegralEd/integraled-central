@@ -1,24 +1,65 @@
 const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const fetch = require('node-fetch');
+const { AbortController } = require('node-fetch/externals');
 const ssmClient = new SSMClient();
 
-async function fetchWithRetry(url, options, maxRetries = 3) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+async function fetchWithTimeout(url, options, timeoutMs = 8000) {
+    console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        console.log(`⏱️ Request to ${url} timed out after ${timeoutMs}ms`);
+        controller.abort();
+    }, timeoutMs);
+    
     try {
-      console.log(`Attempt ${attempt}/${maxRetries} for ${url}`);
-      return await fetch(url, options);
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        console.log(`✅ Response received from ${url}: ${response.status}`);
+        
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+        
+        return response;
     } catch (error) {
-      console.log(`Attempt ${attempt} failed: ${error.message}`);
-      
-      if (attempt < maxRetries) {
-        const delay = Math.min(500 * Math.pow(2, attempt - 1), 3000);
-        console.log(`Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw error; // Rethrow if all retries failed
-      }
+        clearTimeout(timeoutId);
+        
+        if (error.name === 'AbortError') {
+            console.error(`⏱️ Request to ${url} aborted due to timeout`);
+            throw new Error(`Request timeout after ${timeoutMs}ms`);
+        }
+        
+        console.error(`❌ Error fetching ${url}:`, error.message);
+        throw error;
     }
-  }
+}
+
+async function fetchWithRetry(url, options, maxRetries = 3, timeoutMs = 8000) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`🔄 Attempt ${attempt}/${maxRetries} for ${url}`);
+            return await fetchWithTimeout(url, options, timeoutMs);
+        } catch (error) {
+            lastError = error;
+            console.error(`❌ Attempt ${attempt} failed:`, error.message);
+            
+            if (attempt < maxRetries) {
+                const delay = Math.min(500 * Math.pow(2, attempt - 1), 3000);
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    
+    console.error(`❌ All ${maxRetries} attempts failed for ${url}`);
+    throw lastError;
 }
 
 function isHttpRequest(event) {
@@ -42,11 +83,13 @@ exports.handler = async (event) => {
         try {
             body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
         } catch (error) {
-            console.error("Error parsing request body:", error);
+            console.error("❌ Error parsing request body:", error);
             return {
                 statusCode: 400,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
                 },
                 body: JSON.stringify({ error: 'Invalid request body' })
             };
@@ -64,7 +107,9 @@ exports.handler = async (event) => {
         return {
             statusCode: 400,
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
             },
             body: JSON.stringify({ error: 'Message is required' })
         };
@@ -72,31 +117,34 @@ exports.handler = async (event) => {
     
     console.log("📝 Processing message:", { message, User_ID, Organization });
     
-    // Get OpenAI parameters from SSM
-    const [openaiKeyParam, assistantIdParam] = await Promise.all([
-        ssmClient.send(new GetParameterCommand({
-            Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
-            WithDecryption: true
-        })),
-        ssmClient.send(new GetParameterCommand({
-            Name: '/rag-bmore/prod/config/OPENAI_ASSISTANT_ID',
-            WithDecryption: true
-        }))
-    ]);
-
-    // Check if this is a direct invocation or an HTTP request
-    const requestMethod = getRequestMethod(event);
-    const isPostRequest = requestMethod === 'POST';
-    const isDirectInvocation = requestMethod === 'DIRECT' || !isHttpRequest(event);
-
-    // Process if it's either a direct invocation or a POST request
-    if (isDirectInvocation || isPostRequest) {
-        try {
-            // Create thread with metadata
-            const threadResponse = await fetch('https://api.openai.com/v1/threads', {
+    try {
+        // Get OpenAI parameters from SSM
+        console.log("🔑 Retrieving API parameters from SSM...");
+        const [openaiKeyParam, assistantIdParam] = await Promise.all([
+            ssmClient.send(new GetParameterCommand({
+                Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
+                WithDecryption: true
+            })),
+            ssmClient.send(new GetParameterCommand({
+                Name: '/rag-bmore/prod/config/OPENAI_ASSISTANT_ID',
+                WithDecryption: true
+            }))
+        ]);
+        
+        const openaiApiKey = openaiKeyParam.Parameter.Value;
+        const assistantId = assistantIdParam.Parameter.Value;
+        
+        console.log("✅ Retrieved API parameters successfully");
+        
+        // Create or retrieve thread
+        let threadId = thread_id;
+        
+        if (!threadId) {
+            console.log("🧵 Creating new thread...");
+            const threadResponse = await fetchWithRetry('https://api.openai.com/v1/threads', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
+                    'Authorization': `Bearer ${openaiApiKey}`,
                     'Content-Type': 'application/json',
                     'OpenAI-Beta': 'assistants=v1'
                 },
@@ -106,136 +154,138 @@ exports.handler = async (event) => {
                         organization: Organization
                     }
                 })
-            });
+            }, 3, 10000); // 3 retries, 10 second timeout
             
-            const thread = await threadResponse.json();
-            console.log("🧵 Thread created:", thread.id);
-            
-            // Add message to thread
-            await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
-                    'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v1'
-                },
-                body: JSON.stringify({
-                    role: 'user',
-                    content: message
-                })
-            });
-            
-            // Run the assistant
-            const runResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
-                    'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v1'
-                },
-                body: JSON.stringify({
-                    assistant_id: assistantIdParam.Parameter.Value
-                })
-            });
-            
-            const run = await runResponse.json();
-            console.log("🏃 Run created:", run.id);
-            
-            // Set a timeout for polling
-            const startTime = Date.now();
-            const TIMEOUT_THRESHOLD = 8000; // 8 seconds (2s buffer for Lambda)
-            
-            // Poll for completion with timeout
-            let status = 'queued';
-            let timeoutReached = false;
-            
-            while (status !== 'completed' && status !== 'failed' && !timeoutReached) {
-                console.log(`⏳ Run status: ${status}`);
-                
-                // Check if we're approaching timeout
-                if (Date.now() - startTime > TIMEOUT_THRESHOLD) {
-                    console.log("⚠️ Approaching Lambda timeout, returning early");
-                    timeoutReached = true;
-                    break;
-                }
-                
-                // Wait 1 second between polls
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const response = await fetch(`https://api.openai.com/v1/threads/${thread.id}/runs/${run.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
-                        'Content-Type': 'application/json',
-                        'OpenAI-Beta': 'assistants=v1'
-                    }
-                });
-                
-                const runStatus = await response.json();
-                status = runStatus.status;
-            }
-            
-            // If we reached timeout, return a processing message
-            if (timeoutReached) {
-                return {
-                    statusCode: 202, // Accepted but processing
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: "I'm processing your request. This might take a moment. Please try asking again in a few seconds.",
-                        thread_id: thread.id,
-                        processing: true
-                    })
-                };
-            }
-            
-            // Get messages
-            const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${thread.id}/messages`, {
-                headers: {
-                    'Authorization': `Bearer ${openaiKeyParam.Parameter.Value}`,
-                    'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v1'
-                }
-            });
-            
-            const messages = await messagesResponse.json();
-            const assistantMessage = messages.data.find(m => m.role === 'assistant');
-            
-            console.log("💬 Assistant response:", assistantMessage.content[0].text.value.substring(0, 50) + "...");
-            
-            return {
-                statusCode: 200,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: assistantMessage.content[0].text.value,
-                    thread_id: thread.id
-                })
-            };
-        } catch (error) {
-            console.error("❌ Error:", error);
-            return {
-                statusCode: 500,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    error: 'An error occurred processing your request',
-                    details: error.message
-                })
-            };
+            const threadData = await threadResponse.json();
+            threadId = threadData.id;
+            console.log("✅ Created thread:", threadId);
+        } else {
+            console.log("🧵 Using existing thread:", threadId);
         }
+        
+        // Add message to thread
+        console.log("💬 Adding message to thread...");
+        const messageResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            },
+            body: JSON.stringify({
+                role: 'user',
+                content: message
+            })
+        }, 3, 10000);
+        
+        const messageData = await messageResponse.json();
+        console.log("✅ Added message:", messageData.id);
+        
+        // Run the assistant
+        console.log("🤖 Running assistant...");
+        const runResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/runs`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            },
+            body: JSON.stringify({
+                assistant_id: assistantId
+            })
+        }, 3, 10000);
+        
+        const runData = await runResponse.json();
+        const runId = runData.id;
+        console.log("✅ Started run:", runId);
+        
+        // Check run status
+        let runStatus = runData.status;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        console.log("⏳ Checking run status...");
+        while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const statusResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${openaiApiKey}`,
+                    'Content-Type': 'application/json',
+                    'OpenAI-Beta': 'assistants=v1'
+                }
+            }, 3, 8000);
+            
+            const statusData = await statusResponse.json();
+            runStatus = statusData.status;
+            console.log(`⏳ Run status (attempt ${attempts}/${maxAttempts}):`, runStatus);
+        }
+        
+        if (runStatus !== 'completed') {
+            throw new Error(`Assistant run did not complete. Status: ${runStatus}`);
+        }
+        
+        // Get messages (including assistant's response)
+        console.log("📨 Retrieving messages...");
+        const messagesResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            }
+        }, 3, 8000);
+        
+        const messagesData = await messagesResponse.json();
+        console.log("✅ Retrieved messages:", messagesData.data.length);
+        
+        // Get the latest assistant message
+        const assistantMessages = messagesData.data.filter(msg => msg.role === 'assistant');
+        const latestAssistantMessage = assistantMessages[0];
+        
+        if (!latestAssistantMessage) {
+            throw new Error('No assistant response found');
+        }
+        
+        const assistantResponse = latestAssistantMessage.content[0].text.value;
+        console.log("🤖 Assistant response:", assistantResponse.substring(0, 100) + "...");
+        
+        // Return the response
+        return {
+            statusCode: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
+            body: JSON.stringify({
+                message: assistantResponse,
+                thread_id: threadId,
+                processing: false
+            })
+        };
+    } catch (error) {
+        console.error("❌ Error:", error);
+        
+        // Return a more detailed error response
+        return {
+            statusCode: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            },
+            body: JSON.stringify({
+                error: 'An error occurred processing your request',
+                message: error.message,
+                code: error.code || 'UNKNOWN_ERROR',
+                type: error.type || 'UNKNOWN_TYPE',
+                processing: false
+            })
+        };
     }
-    
-    // Return 405 Method Not Allowed for non-POST requests
-    return {
-        statusCode: 405,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ error: 'Method not allowed' })
-    };
 };
 
 // Helper function to poll run status
