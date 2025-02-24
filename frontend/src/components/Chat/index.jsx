@@ -9,15 +9,20 @@ const Chat = () => {
     const [user, setUser] = useState(null);
 
     useEffect(() => {
-        // Get user data from URL params only
+        // Get user data from URL params using AirTable field names
         const params = new URLSearchParams(window.location.search);
-        const userId = params.get('user_id');
-        const userEmail = params.get('email');
+        const User_ID = params.get('User_ID');
+        const Email = params.get('Email');
+        const Organization = params.get('Organization');
 
-        if (userId && userEmail) {
-            setUser({ id: userId, email: userEmail });
+        if (User_ID) {  // Prioritize User_ID for identification
+            setUser({ 
+                id: User_ID, 
+                email: Email,
+                organization: Organization 
+            });
             setIsReady(true);
-            console.log('User authenticated via URL params:', { userId, userEmail });
+            console.log('User authenticated:', { User_ID, Email, Organization });
         }
     }, []);
 
