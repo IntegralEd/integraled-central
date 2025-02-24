@@ -15,20 +15,30 @@ const Chat = () => {
         const Email = params.get('Email');
         const Organization = params.get('Organization');
 
-        if (User_ID) {  // Prioritize User_ID for identification
+        console.log('🔍 URL Parameters:', { User_ID, Email, Organization });
+
+        if (User_ID) {
             setUser({ 
                 id: User_ID, 
                 email: Email,
                 organization: Organization 
             });
             setIsReady(true);
-            console.log('User authenticated:', { User_ID, Email, Organization });
+            console.log('✅ User authenticated:', { User_ID, Email, Organization });
+        } else {
+            console.warn('⚠️ Missing User_ID in URL parameters');
         }
     }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!input.trim() || isLoading) return;
+
+        console.log('📤 Sending message:', { 
+            message: input,
+            User_ID: user.id,
+            Organization: user.organization 
+        });
 
         const userMessage = { role: 'user', content: input };
         setMessages(prev => [...prev, userMessage]);
