@@ -45,14 +45,13 @@ if [ "$status_code" -eq 200 ] || [ "$status_code" -eq 201 ]; then
   thread_id=$(echo $body | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
   echo -e "${GREEN}Thread ID: $thread_id${NC}"
   
-  # Now test adding a message to this thread
+  # Now test adding a message to this thread - UPDATED FORMAT FOR V2
   echo -e "\n${BLUE}Testing adding a message to the thread...${NC}"
   message_response=$(curl -s -w "\n%{http_code}" "https://api.openai.com/v1/threads/$thread_id/messages" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $API_KEY" \
     -H "OpenAI-Beta: assistants=v2" \
     -d '{
-      "role": "user",
       "content": "Hello, this is a test message"
     }')
     
@@ -74,7 +73,7 @@ else
   response2=$(curl -s -w "\n%{http_code}" https://api.openai.com/v1/threads \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $API_KEY" \
-    -H "OpenAI-Beta: assistants=v2" \
+    -H "OpenAI-Beta: assistants=v1" \
     -d '{"metadata":{}}')
     
   status_code2=$(echo "$response2" | tail -n1)
