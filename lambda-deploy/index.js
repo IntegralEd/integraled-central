@@ -179,21 +179,7 @@ exports.handler = async (event) => {
         
         // Add message to thread
         console.log("💬 Adding message to thread...");
-        const messageResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${openaiApiKey}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
-            },
-            body: JSON.stringify({
-                role: "user",
-                content: message
-            })
-        }, 3, 10000);
-        
-        const messageData = await messageResponse.json();
-        console.log("✅ Added message:", messageData.id);
+        await addMessageToThread(threadId, message, openaiApiKey);
         
         // Run the assistant
         console.log("🤖 Running assistant...");
@@ -205,7 +191,7 @@ exports.handler = async (event) => {
                 'OpenAI-Beta': 'assistants=v2'
             },
             body: JSON.stringify({
-                assistant_id: assistantId
+                assistant_id: process.env.OPENAI_ASSISTANT_ID
             })
         }, 3, 10000);
         
