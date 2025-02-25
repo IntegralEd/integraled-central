@@ -192,7 +192,7 @@ exports.handler = async (event) => {
                 'OpenAI-Beta': 'assistants=v2'
             },
             body: JSON.stringify({
-                assistant_id: process.env.OPENAI_ASSISTANT_ID
+                assistant_id: assistantId
             })
         }, 3, 10000);
         
