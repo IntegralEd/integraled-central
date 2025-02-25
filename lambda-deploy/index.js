@@ -1,8 +1,7 @@
 const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const fetch = require('node-fetch');
-const { AbortController } = require('node-fetch/externals');
+const { AbortController } = global;
 const ssmClient = new SSMClient();
-const { sendConversationToMake } = require('./make-integration');
 
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
@@ -252,25 +251,6 @@ exports.handler = async (event) => {
         
         const assistantResponse = latestAssistantMessage.content[0].text.value;
         console.log("🤖 Assistant response:", assistantResponse.substring(0, 100) + "...");
-        
-        // Get Make webhook URL from environment variable or use default for testing
-        const MAKE_WEBHOOK_URL = process.env.MAKE_WEBHOOK_URL || 'https://hook.us1.make.com/3zs7qeg2eaz9iqudi1yooyokq14et2nb';
-
-        // Log conversations to Make for organizational insights
-        console.log("💾 Logging conversation to Make...");
-        try {
-            // Send the entire conversation thread to Make
-            await sendConversationToMake(
-                event, 
-                threadId, 
-                messagesData.data, 
-                MAKE_WEBHOOK_URL
-            );
-            console.log("✅ Conversation logged successfully");
-        } catch (makeError) {
-            // Non-critical error - log but continue
-            console.error("⚠️ Error logging conversation:", makeError);
-        }
         
         // Return the response
         return {
