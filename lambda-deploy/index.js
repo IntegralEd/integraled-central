@@ -102,35 +102,45 @@ async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId) {
 
 exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
+
+    // Parse the request
+    const { message, thread_id, User_ID, Organization } = event.body ? JSON.parse(event.body) : {};
     
-    // Check if the event has a body property and parse it if it's a string
-    let body;
-    if (event.body) {
+    // Special handling for schema inspection
+    if (event.rawPath === '/inspect-schema') {
+        console.log("📊 Inspecting Airtable schema...");
         try {
-            body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-        } catch (error) {
-            console.error("❌ Error parsing request body:", error);
+            const schema = await getTableSchema();
             return {
-                statusCode: 400,
-                body: JSON.stringify({ error: 'Invalid request body' })
+                statusCode: 200,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    success: true,
+                    schema: schema
+                })
+            };
+        } catch (error) {
+            console.error('Schema inspection failed:', error);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    success: false,
+                    error: error.message
+                })
             };
         }
-    } else {
-        // If no body, check if the event itself contains the required fields
-        body = event;
     }
-    
-    // Extract message and user info from the parsed body
-    const { message, User_ID, Organization, thread_id } = body;
-    
-    // Validate required fields
-    if (!message) {
+
+    // Regular message handling
+    if (!message && event.rawPath !== '/inspect-schema') {
         return {
             statusCode: 400,
-            body: JSON.stringify({ error: 'Message is required' })
+            body: JSON.stringify({ error: "Message is required" })
         };
     }
-    
+
     console.log("📝 Processing message:", { message, User_ID, Organization });
     
     try {
@@ -278,26 +288,6 @@ exports.handler = async (event, context) => {
                 processing: false
             })
         };
-    }
-
-    // Add a path for schema inspection
-    if (event.httpMethod === 'GET' && event.path === '/inspect-schema') {
-        try {
-            const schema = await getTableSchema();
-            return {
-                statusCode: 200,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(schema)
-            };
-        } catch (error) {
-            console.error('Schema inspection failed:', error);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({ error: error.message })
-            };
-        }
     }
 };
 
