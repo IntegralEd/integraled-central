@@ -124,39 +124,65 @@ An end-to-end RAG application (from scratch) based on FastAPI that processes PDF
 ### Lambda Configuration
 - Function: `get-pinecone-config`
 - Region: `us-east-2`
-- Runtime: `nodejs22.x`
+- Runtime: `nodejs18.x`
 - CORS handling: Managed via Lambda URL configuration
 
 ┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────┐
 │ Softr App   │────▶│ GitHub Pages    │────▶│ AWS Lambda API  │────▶│ OpenAI API  │
-│ Storyline   │     │ (HTML/JS)       │     │ (Node.js)       │     │ (Assistant) │
+│ Storyline   │     │ (HTML/JS)       │     │ (Node.js 18)    │     │ (Assistant) │
 └─────────────┘     └─────────────────┘     └─────────────────┘     └─────────────┘
-                            │                        │
-                            │                        ▼
-                            │               ┌─────────────────┐
-                            └───────────────│ URL Parameters  │
-                                            │ (Authentication)│
+    │                        │                        │                      │
+    │                        │                        │                      │
+    │                        │                        │                      │
+    ▼                        ▼                        ▼                      │
+┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐             │
+│ User_ID &   │────▶│ URL Parameters  │────▶│ User Permission │             │
+│ Organization│     │ (Authentication)│     │ & Save Settings │             │
+└─────────────┘     └─────────────────┘     └─────────────────┘             │
+                                                    │                        │
+                                                    ▼                        │
+                                            ┌─────────────────┐             │
+                                            │ Make Integration │◀────────────┘
+                                            │ (Webhook)        │
+                                            └─────────────────┘
+                                                    │
+                                                    ▼
+                                            ┌─────────────────┐
+                                            │ Airtable        │
+                                            │ (Data Storage)  │
                                             └─────────────────┘
 
 ## Custom GPT Integration with Softr
 
 ### Overview
-This project embeds a custom GPT-powered chat interface directly in Softr applications.
+This project embeds a custom GPT-powered chat interface directly in Softr applications with conversation logging via Make to Airtable, preserving user privacy through ID-based identification.
 
 ### Key Components
 1. **Lambda Function**: Handles communication with OpenAI's Assistants API
 2. **GitHub Pages**: Hosts static assets for the chat interface
 3. **Softr Integration**: Embeds the chat interface via HTML component
+4. **Make Integration**: Routes conversations to Airtable based on user permissions
+5. **Airtable**: Stores conversations and user preferences for future retrieval
+
+### Data Flow & Privacy
+- **User Identification**: System uses `User_ID` and `Organization` as primary keys across all components
+- **Permission Levels**: Teacher/admin conversations automatically save; student conversations only save with explicit permission
+- **Privacy First**: Production environments avoid passing email addresses, especially in educational settings with minors
+- **Future Integration**: Airtable `User_Table` will store user preferences (grade level, subject, etc.) that guide prompt inputs
 
 ### Setup
 1. Deploy the Lambda function with proper environment variables
 2. Add the chat interface HTML to a Softr HTML component
 3. Pass Softr user context to maintain conversation history
+4. Configure Make webhook for conversation routing to Airtable
+5. Create appropriate Airtable tables for user data and conversation storage
 
 ### User Experience
 - Each user gets a persistent conversation thread
 - Chat history is maintained between sessions
 - The interface is fully embedded in your Softr application
+- Conversations are stored anonymously using `User_ID` rather than personally identifiable information
+- Future enhancements will personalize responses based on user preferences stored in Airtable
 
 
 
