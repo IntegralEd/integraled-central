@@ -97,6 +97,7 @@ async function addMessageToThread(threadId, message, apiKey, orgId, projectId) {
         const response = await fetchOpenAI(`https://api.openai.com/v1/threads/${threadId}/messages`, {
             method: 'POST',
             body: JSON.stringify({
+                role: 'user',
                 content: message
             })
         }, apiKey, orgId, projectId, 3, 8000);
