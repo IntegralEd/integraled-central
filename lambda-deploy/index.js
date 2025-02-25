@@ -103,46 +103,15 @@ async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId) {
 exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
 
-    // Parse the request
     const { message, thread_id, User_ID, Organization } = event.body ? JSON.parse(event.body) : {};
     
-    // Special handling for schema inspection
-    if (event.rawPath === '/inspect-schema') {
-        console.log("📊 Inspecting Airtable schema...");
-        try {
-            const schema = await getTableSchema();
-            return {
-                statusCode: 200,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    success: true,
-                    schema: schema
-                })
-            };
-        } catch (error) {
-            console.error('Schema inspection failed:', error);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({
-                    success: false,
-                    error: error.message
-                })
-            };
-        }
-    }
-
-    // Regular message handling
-    if (!message && event.rawPath !== '/inspect-schema') {
+    if (!message) {
         return {
             statusCode: 400,
             body: JSON.stringify({ error: "Message is required" })
         };
     }
 
-    console.log("📝 Processing message:", { message, User_ID, Organization });
-    
     try {
         // Get OpenAI parameters from SSM
         console.log("🔑 Retrieving API parameters from SSM...");
@@ -275,18 +244,10 @@ exports.handler = async (event, context) => {
         
         return response;
     } catch (error) {
-        console.error("❌ Error:", error);
-        
-        // Return a more detailed error response
+        console.error('Error:', error);
         return {
             statusCode: 500,
-            body: JSON.stringify({
-                error: 'An error occurred processing your request',
-                message: error.message,
-                code: error.code || 'UNKNOWN_ERROR',
-                type: error.type || 'UNKNOWN_TYPE',
-                processing: false
-            })
+            body: JSON.stringify({ error: error.message })
         };
     }
 };
