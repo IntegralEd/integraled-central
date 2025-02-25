@@ -196,6 +196,7 @@ exports.handler = async (event) => {
                 'OpenAI-Beta': 'assistants=v2'
             },
             body: JSON.stringify({
+                role: "user",
                 content: message
             })
         }, 3, 10000);
@@ -275,15 +276,21 @@ exports.handler = async (event) => {
         console.log("🤖 Assistant response:", assistantResponse.substring(0, 100) + "...");
         
         // Return the response
-        return {
+        const response = {
             statusCode: 200,
-            headers: CORS_HEADERS,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': 'https://integraled.github.io',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            },
             body: JSON.stringify({
                 message: assistantResponse,
-                thread_id: threadId,
-                processing: false
+                thread_id: threadId
             })
         };
+        
+        return response;
     } catch (error) {
         console.error("❌ Error:", error);
         
