@@ -332,11 +332,4 @@ async function checkRunStatus(apiKey, threadId, runId) {
     }
     
     return status;
-}
-
-// In handler() function, add early validation:
-console.log("🔑 Checking API Key & Project ID...");
-if (!process.env.OPENAI_API_KEY) {
-    console.error("❌ Missing OpenAI API Key!");
-    return { statusCode: 500, body: JSON.stringify({ error: "Missing API credentials" }) };
 } 
