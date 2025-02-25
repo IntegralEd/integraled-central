@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const { AbortController } = global;
 const ssmClient = new SSMClient({ region: "us-east-2" });
 const { addMessageToThread } = require('./thread-manager');
+const { getTableSchema } = require('./airtable-utils');
 
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
@@ -99,7 +100,7 @@ async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId) {
     // ... rest of function
 }
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
     
     // Check if the event has a body property and parse it if it's a string
@@ -277,6 +278,26 @@ exports.handler = async (event) => {
                 processing: false
             })
         };
+    }
+
+    // Add a path for schema inspection
+    if (event.httpMethod === 'GET' && event.path === '/inspect-schema') {
+        try {
+            const schema = await getTableSchema();
+            return {
+                statusCode: 200,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(schema)
+            };
+        } catch (error) {
+            console.error('Schema inspection failed:', error);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({ error: error.message })
+            };
+        }
     }
 };
 
