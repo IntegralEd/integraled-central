@@ -169,3 +169,6 @@ yarn-error.log*
 # Cache
 .cache/
 .npm/
+/test/*.json
+response.json
+/test/temp/
