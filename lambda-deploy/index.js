@@ -170,7 +170,7 @@ exports.handler = async (event) => {
                 headers: {
                     'Authorization': `Bearer ${openaiApiKey}`,
                     'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v1'
+                    'OpenAI-Beta': 'assistants=v2'
                 },
                 body: JSON.stringify({
                     metadata: {
@@ -178,7 +178,7 @@ exports.handler = async (event) => {
                         organization: Organization
                     }
                 })
-            }, 3, 10000); // 3 retries, 10 second timeout
+            }, 3, 10000);
             
             const threadData = await threadResponse.json();
             threadId = threadData.id;
@@ -194,7 +194,7 @@ exports.handler = async (event) => {
             headers: {
                 'Authorization': `Bearer ${openaiApiKey}`,
                 'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v1'
+                'OpenAI-Beta': 'assistants=v2'
             },
             body: JSON.stringify({
                 role: 'user',
@@ -212,7 +212,7 @@ exports.handler = async (event) => {
             headers: {
                 'Authorization': `Bearer ${openaiApiKey}`,
                 'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v1'
+                'OpenAI-Beta': 'assistants=v2'
             },
             body: JSON.stringify({
                 assistant_id: assistantId
@@ -238,7 +238,7 @@ exports.handler = async (event) => {
                 headers: {
                     'Authorization': `Bearer ${openaiApiKey}`,
                     'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v1'
+                    'OpenAI-Beta': 'assistants=v2'
                 }
             }, 3, 8000);
             
@@ -258,7 +258,7 @@ exports.handler = async (event) => {
             headers: {
                 'Authorization': `Bearer ${openaiApiKey}`,
                 'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v1'
+                'OpenAI-Beta': 'assistants=v2'
             }
         }, 3, 8000);
         
