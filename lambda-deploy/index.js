@@ -100,6 +100,28 @@ async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId) {
     // ... rest of function
 }
 
+async function verifyThreadExists(threadId, openaiApiKey) {
+    if (!threadId) return false;
+    
+    try {
+        console.log(`🔍 Verifying thread: ${threadId}`);
+        const response = await fetch(`https://api.openai.com/v1/threads/${threadId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v2'
+            }
+        });
+        
+        // Return true if thread exists, false otherwise
+        return response.ok;
+    } catch (error) {
+        console.warn(`⚠️ Thread verification failed: ${error.message}`);
+        return false;
+    }
+}
+
 exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
 
@@ -134,6 +156,16 @@ exports.handler = async (event, context) => {
         // Create or retrieve thread
         let threadId = thread_id;
         
+        if (threadId) {
+            const isValid = await verifyThreadExists(threadId, openaiApiKey);
+            if (!isValid) {
+                console.log("⚠️ Provided thread ID is invalid, creating new thread instead");
+                threadId = null;
+            } else {
+                console.log("🧵 Using existing thread:", threadId);
+            }
+        }
+        
         if (!threadId) {
             console.log("🧵 Creating new thread...");
             const threadResponse = await fetchWithRetry('https://api.openai.com/v1/threads', {
@@ -154,8 +186,6 @@ exports.handler = async (event, context) => {
             const threadData = await threadResponse.json();
             threadId = threadData.id;
             console.log("✅ Created thread:", threadId);
-        } else {
-            console.log("🧵 Using existing thread:", threadId);
         }
         
         // Add message to thread
@@ -183,12 +213,13 @@ exports.handler = async (event, context) => {
         // Check run status
         let runStatus = runData.status;
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 20;
+        const pollInterval = 1000;
         
         console.log("⏳ Checking run status...");
         while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
             attempts++;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
             
             const statusResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
                 method: 'GET',
@@ -282,4 +313,46 @@ async function checkRunStatus(apiKey, threadId, runId) {
     }
     
     return status;
+}
+
+// Add a new endpoint for checking thread status
+if (event.rawPath === '/thread-status') {
+    const { thread_id } = event.body ? JSON.parse(event.body) : {};
+    
+    if (!thread_id) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "Thread ID is required" })
+        };
+    }
+    
+    try {
+        const statusResponse = await fetch(`https://api.openai.com/v1/threads/${thread_id}/runs`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v2'
+            }
+        });
+        
+        const statusData = await statusResponse.json();
+        const activeRuns = statusData.data.filter(run => 
+            ['queued', 'in_progress'].includes(run.status)
+        );
+        
+        return {
+            statusCode: 200,
+            body: JSON.stringify({
+                thread_exists: true,
+                active_runs: activeRuns.length > 0,
+                can_add_message: activeRuns.length === 0
+            })
+        };
+    } catch (error) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: error.message })
+        };
+    }
 } 
