@@ -4,7 +4,7 @@
  */
 
 const fetch = require('node-fetch');
-const { AbortController } = require('node-fetch/externals');
+const { AbortController } = global;
 
 /**
  * Enhanced fetch with proper OpenAI headers, timeout handling, and retries
