@@ -3,13 +3,6 @@ const fetch = require('node-fetch');
 const { AbortController } = global;
 const ssmClient = new SSMClient({ region: "us-east-2" });
 
-const CORS_HEADERS = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': 'https://integraled.github.io',
-    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
-};
-
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
     
@@ -117,7 +110,6 @@ exports.handler = async (event) => {
             console.error("❌ Error parsing request body:", error);
             return {
                 statusCode: 400,
-                headers: CORS_HEADERS,
                 body: JSON.stringify({ error: 'Invalid request body' })
             };
         }
@@ -133,7 +125,6 @@ exports.handler = async (event) => {
     if (!message) {
         return {
             statusCode: 400,
-            headers: CORS_HEADERS,
             body: JSON.stringify({ error: 'Message is required' })
         };
     }
@@ -278,12 +269,6 @@ exports.handler = async (event) => {
         // Return the response
         const response = {
             statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': 'https://integraled.github.io',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type'
-            },
             body: JSON.stringify({
                 message: assistantResponse,
                 thread_id: threadId
@@ -297,7 +282,6 @@ exports.handler = async (event) => {
         // Return a more detailed error response
         return {
             statusCode: 500,
-            headers: CORS_HEADERS,
             body: JSON.stringify({
                 error: 'An error occurred processing your request',
                 message: error.message,
