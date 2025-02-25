@@ -191,6 +191,30 @@ async function getThreadMessages(threadId, apiKey, orgId, projectId, limit = 100
     }
 }
 
+async function storeThreadAssociation(userId, threadId, dynamoDb) {
+    await dynamoDb.put({
+        TableName: 'BMoreThreads',
+        Item: {
+            user_id: userId,
+            thread_id: threadId,
+            created_at: new Date().toISOString(),
+            last_accessed: new Date().toISOString()
+        }
+    }).promise();
+}
+
+async function getThreadsForUser(userId, dynamoDb) {
+    const result = await dynamoDb.query({
+        TableName: 'BMoreThreads',
+        KeyConditionExpression: 'user_id = :uid',
+        ExpressionAttributeValues: {
+            ':uid': userId
+        }
+    }).promise();
+    
+    return result.Items;
+}
+
 module.exports = {
     verifyThread,
     createThread,
@@ -198,5 +222,7 @@ module.exports = {
     addMessageToThread,
     runThreadWithAssistant,
     checkRunStatus,
-    getThreadMessages
+    getThreadMessages,
+    storeThreadAssociation,
+    getThreadsForUser
 }; 

@@ -237,10 +237,14 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: message,
-                        User_ID: userId,
-                        Organization: organization,
-                        thread_id: threadId
+                        user_id: userId,
+                        thread_id: threadId,
+                        organization: organization,
+                        timestamp: new Date().toISOString(),
+                        metadata: {
+                            thread_status: 'active',
+                            last_interaction: new Date().toISOString()
+                        }
                     })
                 });
                 
