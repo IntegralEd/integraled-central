@@ -3,6 +3,13 @@ const fetch = require('node-fetch');
 const { AbortController } = global;
 const ssmClient = new SSMClient();
 
+const CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': 'https://integraled.github.io',
+    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+};
+
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
     
@@ -110,11 +117,7 @@ exports.handler = async (event) => {
             console.error("❌ Error parsing request body:", error);
             return {
                 statusCode: 400,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-                },
+                headers: CORS_HEADERS,
                 body: JSON.stringify({ error: 'Invalid request body' })
             };
         }
@@ -130,11 +133,7 @@ exports.handler = async (event) => {
     if (!message) {
         return {
             statusCode: 400,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-            },
+            headers: CORS_HEADERS,
             body: JSON.stringify({ error: 'Message is required' })
         };
     }
@@ -146,7 +145,7 @@ exports.handler = async (event) => {
         console.log("🔑 Retrieving API parameters from SSM...");
         const [openaiKeyParam, assistantIdParam] = await Promise.all([
             ssmClient.send(new GetParameterCommand({
-                Name: '/rag-bmore/prod/secrets/OPENAI_API_KEY',
+                Name: '/rag-bmore/prod/secrets/BmoreKeyOpenAi',
                 WithDecryption: true
             })),
             ssmClient.send(new GetParameterCommand({
@@ -197,7 +196,6 @@ exports.handler = async (event) => {
                 'OpenAI-Beta': 'assistants=v2'
             },
             body: JSON.stringify({
-                role: 'user',
                 content: message
             })
         }, 3, 10000);
@@ -279,10 +277,7 @@ exports.handler = async (event) => {
         // Return the response
         return {
             statusCode: 200,
-            headers: {
-                'Content-Type': 'application/json'
-                // No CORS headers - Lambda URL handles this
-            },
+            headers: CORS_HEADERS,
             body: JSON.stringify({
                 message: assistantResponse,
                 thread_id: threadId,
@@ -295,11 +290,7 @@ exports.handler = async (event) => {
         // Return a more detailed error response
         return {
             statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-            },
+            headers: CORS_HEADERS,
             body: JSON.stringify({
                 error: 'An error occurred processing your request',
                 message: error.message,
