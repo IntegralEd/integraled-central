@@ -74,6 +74,30 @@ function getRequestOrigin(event) {
     return isHttpRequest(event) ? (event.headers?.origin || 'unknown') : 'direct-invocation';
 }
 
+// When making API calls to OpenAI, add the Project header
+async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId) {
+    // Prepare OpenAI headers
+    const headers = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v1'
+    };
+    
+    // Add organization header if available
+    if (orgId) {
+        console.log(`🏢 Using OpenAI Organization ID: ${orgId}`);
+        headers['OpenAI-Organization'] = orgId;
+    }
+    
+    // Add project header if available - CRITICAL FOR PROJECT API KEYS
+    if (projectId) {
+        console.log(`📂 Using OpenAI Project ID: ${projectId}`);
+        headers['OpenAI-Project'] = projectId;
+    }
+    
+    // ... rest of function
+}
+
 exports.handler = async (event) => {
     console.log("🔄 Received event:", event);
     
@@ -256,9 +280,8 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+                'Content-Type': 'application/json'
+                // No CORS headers - Lambda URL handles this
             },
             body: JSON.stringify({
                 message: assistantResponse,
@@ -318,4 +341,11 @@ async function checkRunStatus(apiKey, threadId, runId) {
     }
     
     return status;
+}
+
+// In handler() function, add early validation:
+console.log("🔑 Checking API Key & Project ID...");
+if (!process.env.OPENAI_API_KEY) {
+    console.error("❌ Missing OpenAI API Key!");
+    return { statusCode: 500, body: JSON.stringify({ error: "Missing API credentials" }) };
 } 
