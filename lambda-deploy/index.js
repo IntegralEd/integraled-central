@@ -1,7 +1,7 @@
 const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const fetch = require('node-fetch');
 const { AbortController } = global;
-const ssmClient = new SSMClient();
+const ssmClient = new SSMClient({ region: "us-east-2" });
 
 const CORS_HEADERS = {
     'Content-Type': 'application/json',
