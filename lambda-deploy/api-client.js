@@ -26,7 +26,7 @@ async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId, maxRetri
     const headers = {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1'
+        'OpenAI-Beta': 'assistants=v2'
     };
     
     // Add organization header if available
