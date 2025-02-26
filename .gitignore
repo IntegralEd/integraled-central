@@ -133,6 +133,15 @@ dmypy.json
 pytest.ini
 .testmondata
 
+# Add to existing .gitignore
+assets/ocr/*
+*.json
+!package.json
+!package-lock.json
+
+# Exclude large example files
+assets/examples/*
+
 update_params.sh
 node_modules/
 **/node_modules/
@@ -172,3 +181,29 @@ yarn-error.log*
 /test/*.json
 response.json
 /test/temp/
+
+# Dependencies
+node_modules/
+.env
+
+# Build outputs
+dist/
+build/
+*.bundle.js
+
+# System files
+.DS_Store
+*.zsh
+*.zip
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# Duplicate directories
+integraled-central/
