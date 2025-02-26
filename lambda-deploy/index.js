@@ -416,3 +416,33 @@ if (event.rawPath === '/generate-url') {
         };
     }
 }
+
+// Example responses for different scenarios
+const responses = {
+    newAgentSession: {
+        status: "220",
+        payload: {
+            agent_id: "bmore_health",
+            session_id: "sess_123"
+        }
+    },
+    
+    continueThread: {
+        status: "230",
+        payload: {
+            thread_id: "thread_456",
+            context: "Previous discussion about prenatal care"
+        }
+    },
+    
+    triggerAction: {
+        status: "300",
+        payload: {
+            action: "switch_agent",
+            params: {
+                target_agent: "integral_math",
+                reason: "Math question detected"
+            }
+        }
+    }
+};

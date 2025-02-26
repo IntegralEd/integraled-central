@@ -1,12 +1,12 @@
 <!-- Baltimore Maternal Health Assistant - Softr Embed Code -->
 <!-- Version 1.0.1 - Last updated: 2023-06-15 -->
 
-<div id="bmore-chat-container">
-  <div id="bmore-loading-message">
-    <h3>Welcome <span id="bmore-user-name">there</span>!</h3>
-    <p>We're preparing your personalized maternal health assistant...</p>
-  </div>
-  <div id="bmore-iframe-container" style="display: none; width: 100%; height: 600px;"></div>
+<div id="chat-container">
+    <div id="loading" style="display: none;">
+        <p>Preparing your chat session...</p>
+        <div class="message-count"></div>
+    </div>
+    <div id="iframe-container"></div>
 </div>
 
 <script>
@@ -27,90 +27,51 @@
     // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
       // Safely get elements with null checks
-      const chatContainer = document.getElementById('bmore-chat-container');
-      const loadingMessage = document.getElementById('bmore-loading-message');
-      const userNameSpan = document.getElementById('bmore-user-name');
-      const iframeContainer = document.getElementById('bmore-iframe-container');
+      const chatContainer = document.getElementById('chat-container');
+      const loadingDiv = document.getElementById('loading');
+      const iframeContainer = document.getElementById('iframe-container');
       
       // Check if all elements exist
-      if (!chatContainer || !loadingMessage || !userNameSpan || !iframeContainer) {
+      if (!chatContainer || !loadingDiv || !iframeContainer) {
         log('error', 'Required DOM elements not found. Chat container setup failed.');
         return;
       }
       
-      // Function to safely update user name
-      function updateUserName(name) {
-        if (userNameSpan) {
-          userNameSpan.textContent = name || 'there';
-        }
-      }
-      
       // Function to create and load the iframe
-      function createIframe(userData) {
+      async function createIframe(userData) {
         try {
+          loadingDiv.style.display = 'block';
+          
           // Extract user information
           const userId = userData?.airtable_record_id || userData?.record_id || 'anonymous';
-          const userName = userData?.Name || userData?.name || 'there';
-          const userEmail = userData?.Email || userData?.email || '';
           const userOrg = userData?.Organization || userData?.organization || 'Softr';
           
-          // Update the welcome message with the user's name
-          updateUserName(userName);
+          // Construct iframe URL with parameters
+          const iframeUrl = new URL('https://integraled.github.io/integraled-central/');
+          iframeUrl.searchParams.set('User_ID', userId);
+          iframeUrl.searchParams.set('Organization', userOrg);
+          if (userData.thread_id) {
+            iframeUrl.searchParams.set('thread_id', userData.thread_id);
+          }
           
-          // Log the user data for debugging
-          log('info', 'User Data Loaded:', {
-            userId,
-            userName,
-            userEmail: userEmail ? '✓' : '✗', // Don't log actual email
-            userOrg
-          });
-          
-          // Construct the iframe URL with proper encoding
-          const iframeUrl = new URL(GITHUB_PAGES_URL);
-          iframeUrl.searchParams.append('User_ID', userId);
-          iframeUrl.searchParams.append('Organization', userOrg);
-          iframeUrl.searchParams.append('Name', userName);
-          if (userEmail) iframeUrl.searchParams.append('Email', userEmail);
-          iframeUrl.searchParams.append('v', CHAT_VERSION); // Add version to prevent caching
-          
-          // Create the iframe element
           const iframe = document.createElement('iframe');
           iframe.src = iframeUrl.toString();
-          iframe.width = '100%';
-          iframe.height = '100%';
-          iframe.frameBorder = '0';
-          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-          iframe.id = 'bmore-chat-iframe';
-          iframe.title = 'Baltimore Maternal Health Assistant';
-          iframe.setAttribute('aria-label', 'Chat with Baltimore Maternal Health Assistant');
+          iframe.style.width = '100%';
+          iframe.style.height = '600px';
+          iframe.style.border = 'none';
           
-          // Add load event listener
-          iframe.onload = function() {
-            log('info', 'Chat iframe loaded successfully');
-            // Hide loading message and show iframe
-            if (loadingMessage) loadingMessage.style.display = 'none';
-            if (iframeContainer) iframeContainer.style.display = 'block';
+          // Handle iframe load completion
+          iframe.onload = () => {
+            loadingDiv.style.display = 'none';
+            iframeContainer.style.display = 'block';
           };
           
-          // Add error event listener
-          iframe.onerror = function() {
-            log('error', 'Failed to load chat iframe');
-            if (loadingMessage) {
-              loadingMessage.innerHTML = '<h3>Something went wrong</h3><p>We couldn\'t load the chat assistant. Please refresh the page or try again later.</p>';
-            }
-          };
-          
-          // Add the iframe to the container
-          if (iframeContainer) {
-            iframeContainer.innerHTML = '';
-            iframeContainer.appendChild(iframe);
-          }
+          iframeContainer.innerHTML = '';
+          iframeContainer.appendChild(iframe);
           
         } catch (error) {
-          log('error', 'Error creating iframe:', error);
-          if (loadingMessage) {
-            loadingMessage.innerHTML = '<h3>Something went wrong</h3><p>We couldn\'t load the chat assistant. Please refresh the page or try again later.</p>';
-          }
+          log('error', 'Failed to create iframe:', error);
+          loadingDiv.innerHTML = '<p>Error loading chat interface</p>';
         }
       }
       
@@ -155,15 +116,7 @@
                   } else {
                     // Handle case where user is not logged in
                     log('info', 'No authenticated Softr user found, using anonymous mode');
-                    updateUserName('there');
-                    if (loadingMessage) {
-                      loadingMessage.innerHTML = '<h3>Welcome there!</h3><p>For a personalized experience, please log in.</p><p>Loading anonymous chat...</p>';
-                    }
-                    
-                    // Create anonymous iframe after a short delay
-                    setTimeout(() => {
-                      createIframe({ record_id: 'anonymous' });
-                    }, 2000);
+                    createIframe({ record_id: 'anonymous' });
                   }
                 })
                 .catch(error => {
@@ -201,7 +154,7 @@
 </script>
 
 <style>
-  #bmore-chat-container {
+  #chat-container {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
     max-width: 800px;
     margin: 0 auto;
@@ -211,7 +164,7 @@
     background: white;
   }
   
-  #bmore-loading-message {
+  #loading {
     padding: 40px 20px;
     text-align: center;
     background: #f9f9f9;
@@ -223,20 +176,14 @@
     align-items: center;
   }
   
-  #bmore-loading-message h3 {
-    margin-bottom: 16px;
-    color: #333;
-    font-size: 24px;
-  }
-  
-  #bmore-loading-message p {
+  #loading p {
     color: #666;
     font-size: 16px;
     line-height: 1.5;
     margin-bottom: 12px;
   }
   
-  #bmore-iframe-container {
+  #iframe-container {
     border-radius: 8px;
     overflow: hidden;
     height: 600px;
@@ -245,40 +192,36 @@
   
   /* Responsive adjustments */
   @media (max-width: 768px) {
-    #bmore-chat-container {
+    #chat-container {
       border-radius: 0;
       box-shadow: none;
       margin: 0;
       width: 100%;
     }
     
-    #bmore-iframe-container {
+    #iframe-container {
       height: 500px;
     }
   }
   
   /* Mobile portrait mode */
   @media (max-width: 480px) {
-    #bmore-iframe-container {
+    #iframe-container {
       height: 400px;
     }
   }
   
   /* Dark mode support */
   @media (prefers-color-scheme: dark) {
-    #bmore-chat-container {
+    #chat-container {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     
-    #bmore-loading-message {
+    #loading {
       background: #2a2a2a;
     }
     
-    #bmore-loading-message h3 {
-      color: #e0e0e0;
-    }
-    
-    #bmore-loading-message p {
+    #loading p {
       color: #b0b0b0;
     }
   }

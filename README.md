@@ -126,6 +126,7 @@ An end-to-end RAG application (from scratch) based on FastAPI that processes PDF
 - Region: `us-east-2`
 - Runtime: `nodejs18.x`
 - CORS handling: Managed via Lambda URL configuration
+## Architecture Flow
 
 ┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐     ┌─────────────┐
 │ Softr App   │────▶│ GitHub Pages    │────▶│ AWS Lambda API  │────▶│ OpenAI API  │
@@ -135,22 +136,38 @@ An end-to-end RAG application (from scratch) based on FastAPI that processes PDF
     │                        │                        │                      │
     │                        │                        │                      │
     ▼                        ▼                        ▼                      │
-┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐             │
-│ User_ID &   │────▶│ URL Parameters  │────▶│ User Permission │             │
-│ Organization│     │ (Authentication)│     │ & Save Settings │             │
-└─────────────┘     └─────────────────┘     └─────────────────┘             │
-                                                    │                        │
-                                                    ▼                        │
-                                            ┌─────────────────┐             │
-                                            │ Make Integration │◀────────────┘
+┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐            │
+│ User_ID &   │────▶│ URL Parameters  │────▶│ User Permission │            │
+│ Organization│     │ (Authentication)│     │ & Save Settings │            │
+└─────────────┘     └─────────────────┘     └─────────────────┘            │
+                                                    │                       │
+                                                    ▼                       │
+                                            ┌─────────────────┐            │
+                                            │ Make Integration │◀───────────┘
                                             │ (Webhook)        │
-                                            └─────────────────┘
+                                            └────────┬────────┘
                                                     │
                                                     ▼
                                             ┌─────────────────┐
                                             │ Airtable        │
                                             │ (Data Storage)  │
-                                            └─────────────────┘
+                                            └────────┬────────┘
+                                                    │
+                                            ┌───────┴────────┐
+                                            │ Template Output │
+                                            │ ┌────────────┐ │
+                                            │ │Google Drive │ │
+                                            │ │  - Slides  │ │
+                                            │ │  - PDFs    │ │
+                                            │ └────────────┘ │
+                                            └───────┬────────┘
+                                                   │
+                                            ┌──────┴───────┐
+                                            │   Future:    │
+                                            │  Pinecone    │
+                                            │   Vector     │
+                                            │   Storage    │
+                                            └──────────────┘
 
 ## Custom GPT Integration with Softr
 
