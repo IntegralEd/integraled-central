@@ -2,8 +2,13 @@ const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const fetch = require('node-fetch');
 const { AbortController } = global;
 const ssmClient = new SSMClient({ region: "us-east-2" });
-const { addMessageToThread } = require('./thread-manager');
+const { addMessageToThread, verifyThreadExists } = require('./modules/thread-manager');
 const { getTableSchema } = require('./airtable-utils');
+const { streamResponse } = require('./modules/streaming');
+const { createActionButton } = require('./modules/actions');
+const { MessageFormatter } = require('./modules/formatter');
+const { sendToMake } = require('./make-integration');
+const config = require('./config');
 
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
@@ -410,4 +415,4 @@ if (event.rawPath === '/generate-url') {
             body: JSON.stringify({ error: error.message })
         };
     }
-} }
+}
