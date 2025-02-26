@@ -207,3 +207,5 @@ npm-debug.log*
 
 # Duplicate directories
 integraled-central/
+*.zip
+deploy.sh
