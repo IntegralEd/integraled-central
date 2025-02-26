@@ -410,4 +410,4 @@ if (event.rawPath === '/generate-url') {
             body: JSON.stringify({ error: error.message })
         };
     }
-} 
+} }
