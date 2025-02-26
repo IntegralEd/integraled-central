@@ -355,4 +355,59 @@ if (event.rawPath === '/thread-status') {
             body: JSON.stringify({ error: error.message })
         };
     }
+}
+
+// New endpoint for generating a URL based on the provided conditions
+if (event.rawPath === '/generate-url') {
+    const { User_ID, Latest_Chat_Thread_ID, Intake_Tags_Txt } = event.body ? JSON.parse(event.body) : {};
+    
+    if (!User_ID) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "User_ID is required" })
+        };
+    
+    try {
+        const url = IF(
+            AND(User_ID, Latest_Chat_Thread_ID),
+            // Both User_ID and Thread_ID exist - full chat URL
+            CONCATENATE(
+                "https://integraled.github.io/rag-bmore/?",
+                "User_ID=", User_ID,
+                "&Organization=", ENCODE_URL_COMPONENT("IntegralEd"),
+                "&thread_id=", Latest_Chat_Thread_ID,
+                IF(
+                    Intake_Tags_Txt,
+                    "&tags=" & ENCODE_URL_COMPONENT(Intake_Tags_Txt),
+                    ""
+                )
+            ),
+            IF(
+                User_ID,
+                // Only User_ID exists - new chat URL
+                CONCATENATE(
+                    "https://integraled.github.io/rag-bmore/?",
+                    "User_ID=", User_ID,
+                    "&Organization=", ENCODE_URL_COMPONENT("IntegralEd"),
+                    IF(
+                        Intake_Tags_Txt,
+                        "&tags=" & ENCODE_URL_COMPONENT(Intake_Tags_Txt),
+                        ""
+                    )
+                ),
+                // No User_ID - return empty or error message
+                "User ID required for chat access"
+            )
+        );
+        
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ url })
+        };
+    } catch (error) {
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: error.message })
+        };
+    }
 } 
