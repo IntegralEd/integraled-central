@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baltimore Maternal Health Assistant</title>
+    
+    <!-- React Dependencies -->
+    <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+    
+    <!-- Chat Bundle -->
+    <script defer src="chat-bundle.js"></script>
+    
+    <!-- Base Styles -->
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        #chat-root {
+            height: 100vh;
+            width: 100%;
+        }
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .message-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .message {
+            display: flex;
+            margin-bottom: 16px;
+        }
+        .user .message-content {
+            background-color: #4A90E2;
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+        }
+        .assistant .message-content {
+            background-color: #F0F0F0;
+            color: #000;
+            border-radius: 18px 18px 18px 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-root"></div>
+    <script>
+        window.onload = function() {
+            const params = new URLSearchParams(window.location.search);
+            if (window.RAGChat) {
+                window.RAGChat.init('chat-root', {
+                    userId: params.get('User_ID') || 'anonymous',
+                    organization: params.get('Organization') || 'default',
+                    threadId: params.get('thread_id'),
+                    client: 'bmore',
+                    theme: {
+                        colors: {
+                            primary: '#4A90E2',
+                            secondary: '#357ABD'
+                        }
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html> 
