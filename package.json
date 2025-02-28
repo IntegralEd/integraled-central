@@ -1,5 +1,10 @@
 {
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.750.0"
+  },
+  "scripts": {
+    "test": "node test/test-interactions.js",
+    "test:make": "node test/test-make-integration.js",
+    "test:all": "npm run test && npm run test:make"
   }
 }
