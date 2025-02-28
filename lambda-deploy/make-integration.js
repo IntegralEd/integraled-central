@@ -309,10 +309,61 @@ async function sendConversationToMake(event, threadId, messages, webhookUrl, man
     }
 }
 
+/**
+ * Log chat interaction and create ticket if needed
+ * @param {Object} params
+ */
+async function logChatInteraction({
+    User_ID,
+    Org_ID,
+    Thread_ID,
+    interaction_type = 'chat',
+    status = '200'
+}) {
+    const baseWebhookUrl = 'https://hook.us1.make.com/q5affda3x5n8fqp3q7vwdmeyr9apthfr';
+    
+    // Basic payload structure
+    const payload = {
+        User_ID,
+        Org_ID,
+        Thread_ID,
+        timestamp: new Date().toISOString(),
+        interaction: {
+            type: interaction_type,
+            status: status,
+            source: 'pre_auth_chat'
+        }
+    };
+
+    // Sample ticket creation
+    if (interaction_type === 'support_ticket') {
+        payload.ticket = {
+            title: "New Support Request",
+            priority: "medium",
+            category: "general_support",
+            status: "new"
+        };
+    }
+
+    try {
+        const response = await fetch(baseWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to log interaction:', error);
+        return { error: 'Failed to log interaction' };
+    }
+}
+
 module.exports = {
     sendToMake,
     sendConversationToMake,
     extractUrlParams,
     extractAppSource,
-    determineConversationSaveSettings
+    determineConversationSaveSettings,
+    logChatInteraction
 }; 
