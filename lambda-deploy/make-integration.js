@@ -184,13 +184,19 @@ async function sendToMake({
             throw new Error(`Webhook responded with status: ${response.status}`);
         }
         
+        // Clone the response for multiple reads if needed
+        const responseClone = response.clone();
+        
         // Try to parse response for any custom messages
         let responseData = {};
         try {
             responseData = await response.json();
         } catch (e) {
             // If not JSON, get text
-            responseData = { message: await response.text() };
+            responseData = { 
+                message: await responseClone.text(),
+                status: response.status
+            };
         }
         
         console.log('✅ Make webhook response:', response.status, responseData);
@@ -345,6 +351,12 @@ async function logChatInteraction({
         };
     }
 
+    if (status === '130') {
+        const notFoundResponse = await handleUserNotFound(User_ID);
+        payload.response = notFoundResponse;
+        payload.requires_followup = true;
+    }
+
     try {
         const response = await fetch(baseWebhookUrl, {
             method: 'POST',
@@ -352,11 +364,59 @@ async function logChatInteraction({
             body: JSON.stringify(payload)
         });
 
-        return await response.json();
+        // Clone the response for multiple reads if needed
+        const responseClone = response.clone();
+        
+        try {
+            // Try to parse as JSON first
+            return await response.json();
+        } catch (e) {
+            // If JSON parsing fails, get the text response
+            const textResponse = await responseClone.text();
+            return { 
+                status: response.status,
+                message: textResponse,
+                success: response.ok 
+            };
+        }
     } catch (error) {
         console.error('Failed to log interaction:', error);
         return { error: 'Failed to log interaction' };
     }
+}
+
+async function handleUserNotFound(User_ID) {
+    const responsePayload = {
+        status: 130,
+        message: {
+            title: "Account Not Found",
+            body: `We couldn't locate an account for user ID: ${User_ID}`,
+            action: "Please complete user registration",
+            signup_url: "https://bmore.softr.app/user-intake"
+        },
+        email_template: {
+            subject: "Complete Your Registration - Baltimore Health Support",
+            body: `
+                We noticed you tried to access our health support services.
+                To better assist you, please complete your registration:
+                
+                Registration Link: https://bmore.softr.app/user-intake
+                
+                Need help? Contact our program coordinator:
+                Phone: (XXX) XXX-XXXX
+                Email: support@bmore.health
+            `
+        },
+        event_log: {
+            timestamp: new Date().toISOString(),
+            event_type: "user_not_found",
+            user_id: User_ID,
+            action_taken: "registration_link_sent",
+            source: "pre_auth_chat"
+        }
+    };
+
+    return responsePayload;
 }
 
 module.exports = {

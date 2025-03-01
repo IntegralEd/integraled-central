@@ -3,7 +3,8 @@
 /**
  * Test runner for chat interactions
  * Run with: ./test/test-interactions.js
- * or: npm test
+ * or: 
+ * npm test
  */
 
 const { logChatInteraction, sendToMake } = require('../lambda-deploy/make-integration.js');
@@ -52,6 +53,18 @@ async function runSequentialTests() {
             status: '300'
         });
         console.log('✅ Ticket Result:', ticketResult);
+
+        // Test user not found scenario
+        const testNotFound = {
+            User_ID: 'unknown_user_123',
+            Org_ID: 'recjUGiOT65lwgBtm',
+            Thread_ID: 'thread_test123',
+            interaction_type: 'chat',
+            status: '130'
+        };
+
+        const result = await logChatInteraction(testNotFound);
+        console.log(JSON.stringify(result, null, 2));
 
     } catch (error) {
         console.error('❌ Test sequence failed:', error);

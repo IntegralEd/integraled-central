@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Baltimore Health Support</title>
+    <style>
+        .welcome-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .welcome-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            padding: 2rem;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 1.5rem;
+        }
+
+        .title {
+            color: #1a365d;
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .description {
+            color: #4a5568;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: #4299e1;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background: #2b6cb0;
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            margin-top: 2rem;
+            color: #718096;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-container">
+        <div class="welcome-card">
+            <img src="logo.png" alt="Baltimore Health Support" class="logo">
+            <h1 class="title">Welcome to Baltimore Health Support</h1>
+            <p class="description">
+                We're here to connect you with maternal health resources and support. 
+                Let's get started by creating your account or signing in.
+            </p>
+            <a href="https://bmore.softr.app/user-intake" class="cta-button" id="mainCTA">
+                Get Started
+            </a>
+            <p class="footer">
+                Already have an account? 
+                <a href="https://bmore.softr.app/login" id="loginLink">Sign in here</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Handle URL parameters and smart redirects
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('User_ID');
+            const orgId = urlParams.get('organization');
+            const threadId = urlParams.get('thread_id');
+
+            // If we have user parameters, update the login link
+            if (userId && orgId) {
+                const loginLink = document.getElementById('loginLink');
+                const nextPage = encodeURIComponent(`/?User_ID=${userId}&organization=${orgId}${threadId ? `&thread_id=${threadId}` : ''}`);
+                loginLink.href = `https://bmore.softr.app/login?next-page=${nextPage}`;
+            }
+
+            // Optional: Auto-redirect after delay
+            // setTimeout(() => {
+            //     window.location.href = 'https://bmore.softr.app/user-intake';
+            // }, 3000);
+        });
+    </script>
+</body>
+</html> 

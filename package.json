@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@aws-sdk/client-ssm": "^3.750.0"
+    "@aws-sdk/client-ssm": "^3.759.0"
   },
   "scripts": {
     "test": "node test/test-interactions.js",
