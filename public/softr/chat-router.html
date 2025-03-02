@@ -1,0 +1,96 @@
+<!-- DNS Prefetch for Performance -->
+<link rel="dns-prefetch" href="https://cdn.integral-ed.com">
+
+<!-- IntegralEd Core -->
+<link rel="stylesheet" href="https://cdn.integral-ed.com/assets/css/ie-core.css">
+<script src="https://cdn.integral-ed.com/assets/js/ie-core.js"></script>
+
+<!-- IntegralEd Router -->
+<script src="https://cdn.integral-ed.com/assets/js/ie-router.js"></script>
+
+<!-- IntegralEd Chat Router v1.0.0 -->
+<script>
+(function() {
+    const CHAT_WEBHOOK = 'https://hook.us1.make.com/21ijgc0kdupqozwbwesprpt66ic21qrn';
+
+    // Initialize when IntegralEd is ready
+    window.addEventListener('ieReady', function() {
+        initializeChat();
+    });
+
+    function initializeChat() {
+        // Get URL params
+        const params = new URLSearchParams(window.location.search);
+        
+        // Basic context structure
+        const context = {
+            user_id: params.get('user_id') || null,
+            org_id: params.get('org_id') || null,
+            thread_id: params.get('thread_id') || null,
+            source: window.location.href,
+            webhook: CHAT_WEBHOOK
+        };
+
+        // Initialize RAG chat with context
+        window.ieSupport('init', {
+            context,
+            webhook: CHAT_WEBHOOK,
+            onMessage: (message) => {
+                // Update thread ID if received from server
+                if (message.thread_id) {
+                    context.thread_id = message.thread_id;
+                }
+            }
+        });
+
+        // Add chat trigger
+        const container = document.getElementById('ieSupportContainer');
+        const chatButton = document.createElement('button');
+        chatButton.className = 'ie-chat-trigger';
+        chatButton.innerHTML = '💬 Start Chat';
+        chatButton.onclick = () => {
+            // Send initial message to webhook
+            fetch(CHAT_WEBHOOK, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(context)
+            }).then(() => {
+                window.ieSupport('openChat');
+            });
+        };
+        container.appendChild(chatButton);
+    }
+})();
+</script>
+
+<!-- Support Container -->
+<div id="ieSupportContainer"></div>
+
+<style>
+#ieSupportContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: var(--ie-layer-floating);
+}
+
+.ie-chat-trigger {
+    padding: 12px 24px;
+    border-radius: 24px;
+    background: var(--ie-primary);
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ie-chat-trigger:hover {
+    opacity: 0.9;
+}
+</style> 
