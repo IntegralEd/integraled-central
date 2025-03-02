@@ -4,80 +4,159 @@
  */
 
 const { fetchOpenAI } = require('./api-client');
+const { logChatInteraction } = require('../make-integration');
 
 /**
- * Verify if a thread exists and is accessible
- * @param {string} threadId - OpenAI thread ID to verify
- * @param {string} apiKey - OpenAI API key
- * @param {string} orgId - OpenAI Organization ID
- * @param {string} projectId - OpenAI Project ID
- * @returns {Promise<boolean>} - Whether thread exists and is accessible
+ * Verify if a thread exists and is accessible across platforms
+ * @param {Object} threadInfo - Thread information
+ * @param {string} threadInfo.openai_thread - OpenAI thread ID
+ * @param {string} threadInfo.storyline_state - Storyline state ID
+ * @param {Object} config - API configuration
+ * @returns {Promise<Object>} - Thread verification status
  */
-async function verifyThread(threadId, apiKey, orgId, projectId) {
+async function verifyThreads(threadInfo, config) {
+    const results = {
+        openai: false,
+        storyline: false,
+        context: null
+    };
+    
+    try {
+        // Verify OpenAI thread
+        if (threadInfo.openai_thread) {
+            results.openai = await verifyOpenAIThread(
+                threadInfo.openai_thread, 
+                config.apiKey, 
+                config.orgId, 
+                config.projectId
+            );
+        }
+        
+        // Verify Storyline state (if applicable)
+        if (threadInfo.storyline_state) {
+            results.storyline = true; // Storyline states are always valid
+        }
+        
+        // Get latest context from interaction log
+        if (results.openai || results.storyline) {
+            const contextResponse = await logChatInteraction({
+                interaction_type: 'context_fetch',
+                Thread_ID: threadInfo.openai_thread || threadInfo.storyline_state,
+                source_platform: threadInfo.openai_thread ? 'openai' : 'storyline'
+            });
+            results.context = contextResponse.thread_context;
+        }
+        
+        return results;
+    } catch (error) {
+        console.warn(`⚠️ Thread verification failed: ${error.message}`);
+        return results;
+    }
+}
+
+/**
+ * Verify OpenAI thread existence
+ */
+async function verifyOpenAIThread(threadId, apiKey, orgId, projectId) {
     if (!threadId) return false;
     
     try {
-        console.log(`🔍 Verifying thread: ${threadId}`);
+        console.log(`🔍 Verifying OpenAI thread: ${threadId}`);
         await fetchOpenAI(`https://api.openai.com/v1/threads/${threadId}/messages?limit=1`, {
             method: 'GET'
         }, apiKey, orgId, projectId, 2, 5000);
         
-        console.log('✅ Thread verified successfully');
+        console.log('✅ OpenAI thread verified successfully');
         return true;
     } catch (error) {
-        console.warn(`⚠️ Thread verification failed: ${error.message}`);
+        console.warn(`⚠️ OpenAI thread verification failed: ${error.message}`);
         return false;
     }
 }
 
 /**
- * Create a new thread with optional metadata
- * @param {string} apiKey - OpenAI API key
- * @param {string} orgId - OpenAI Organization ID
- * @param {string} projectId - OpenAI Project ID 
- * @param {Object} metadata - Optional metadata (user_id, organization)
- * @returns {Promise<string>} - New thread ID
+ * Create a new unified thread across platforms
+ * @param {Object} config - Configuration options
+ * @param {Object} metadata - Thread metadata
+ * @returns {Promise<Object>} - Created thread IDs and context
  */
-async function createThread(apiKey, orgId, projectId, metadata = {}) {
-    console.log('🆕 Creating new thread with metadata:', metadata);
+async function createUnifiedThread(config, metadata = {}) {
+    console.log('🆕 Creating unified thread with metadata:', metadata);
     
     try {
-        const response = await fetchOpenAI('https://api.openai.com/v1/threads', {
-            method: 'POST',
-            body: JSON.stringify({ metadata })
-        }, apiKey, orgId, projectId, 3, 8000);
+        // Create OpenAI thread
+        const openaiThread = await createOpenAIThread(
+            config.apiKey, 
+            config.orgId, 
+            config.projectId, 
+            metadata
+        );
         
-        const data = await response.json();
-        console.log('✅ Created new thread:', data.id);
-        return data.id;
+        // Log thread creation in interaction log
+        const logResponse = await logChatInteraction({
+            interaction_type: 'thread_create',
+            Thread_ID: openaiThread,
+            source_platform: 'openai',
+            metadata: {
+                ...metadata,
+                platform_specific: {
+                    openai_thread: openaiThread
+                }
+            }
+        });
+        
+        return {
+            thread_ids: {
+                openai: openaiThread,
+                storyline: null // Will be set when Storyline interaction begins
+            },
+            context: logResponse.thread_context
+        };
     } catch (error) {
-        console.error('❌ Failed to create thread:', error);
-        throw new Error(`Thread creation failed: ${error.message}`);
+        console.error('❌ Failed to create unified thread:', error);
+        throw new Error(`Unified thread creation failed: ${error.message}`);
     }
 }
 
 /**
- * Get or create a thread for a user
- * @param {string} threadId - Existing thread ID (optional)
- * @param {string} userId - User ID
- * @param {string} organization - Organization name
- * @param {string} apiKey - OpenAI API key
- * @param {string} orgId - OpenAI Organization ID
- * @param {string} projectId - OpenAI Project ID
- * @returns {Promise<string>} - Thread ID
+ * Create OpenAI thread
  */
-async function getOrCreateThread(threadId, userId, organization, apiKey, orgId, projectId) {
-    // First try to verify the existing thread
-    if (threadId && await verifyThread(threadId, apiKey, orgId, projectId)) {
-        console.log(`🧵 Using existing thread: ${threadId}`);
-        return threadId;
+async function createOpenAIThread(apiKey, orgId, projectId, metadata = {}) {
+    const response = await fetchOpenAI('https://api.openai.com/v1/threads', {
+        method: 'POST',
+        body: JSON.stringify({ metadata })
+    }, apiKey, orgId, projectId, 3, 8000);
+    
+    const data = await response.json();
+    console.log('✅ Created OpenAI thread:', data.id);
+    return data.id;
+}
+
+/**
+ * Get or create a unified thread
+ * @param {Object} threadInfo - Existing thread information
+ * @param {Object} config - Configuration options
+ * @returns {Promise<Object>} - Thread IDs and context
+ */
+async function getOrCreateUnifiedThread(threadInfo, config) {
+    // First verify existing threads
+    const verificationResult = await verifyThreads(threadInfo, config);
+    
+    if (verificationResult.openai || verificationResult.storyline) {
+        console.log(`🧵 Using existing thread(s):`, threadInfo);
+        return {
+            thread_ids: {
+                openai: threadInfo.openai_thread,
+                storyline: threadInfo.storyline_state
+            },
+            context: verificationResult.context
+        };
     }
     
-    // Create new thread with user metadata
-    console.log(`🆕 Creating new thread for user: ${userId}`);
-    return await createThread(apiKey, orgId, projectId, {
-        user_id: userId,
-        organization: organization || 'unknown'
+    // Create new unified thread
+    return await createUnifiedThread(config, {
+        user_id: config.userId,
+        organization: config.organization
     });
 }
 
@@ -108,6 +187,32 @@ async function addMessageToThread(threadId, message, apiKey, orgId, projectId) {
     } catch (error) {
         console.error('❌ Failed to add message:', error);
         throw new Error(`Adding message failed: ${error.message}`);
+    }
+}
+
+/**
+ * Get all messages from a thread
+ * @param {string} threadId - Thread ID
+ * @param {string} apiKey - OpenAI API key
+ * @param {string} orgId - OpenAI Organization ID
+ * @param {string} projectId - OpenAI Project ID
+ * @param {number} limit - Maximum number of messages to retrieve (default: 100)
+ * @returns {Promise<Array>} - Array of messages
+ */
+async function getThreadMessages(threadId, apiKey, orgId, projectId, limit = 100) {
+    console.log(`📃 Getting messages from thread: ${threadId}`);
+    
+    try {
+        const response = await fetchOpenAI(`https://api.openai.com/v1/threads/${threadId}/messages?limit=${limit}`, {
+            method: 'GET'
+        }, apiKey, orgId, projectId, 3, 8000);
+        
+        const data = await response.json();
+        console.log(`✅ Retrieved ${data.data.length} messages`);
+        return data.data;
+    } catch (error) {
+        console.error('❌ Failed to get messages:', error);
+        throw new Error(`Getting messages failed: ${error.message}`);
     }
 }
 
@@ -166,38 +271,13 @@ async function checkRunStatus(threadId, runId, apiKey, orgId, projectId) {
     }
 }
 
-/**
- * Get all messages from a thread
- * @param {string} threadId - Thread ID
- * @param {string} apiKey - OpenAI API key
- * @param {string} orgId - OpenAI Organization ID
- * @param {string} projectId - OpenAI Project ID
- * @param {number} limit - Maximum number of messages to retrieve (default: 100)
- * @returns {Promise<Array>} - Array of messages
- */
-async function getThreadMessages(threadId, apiKey, orgId, projectId, limit = 100) {
-    console.log(`📃 Getting messages from thread: ${threadId}`);
-    
-    try {
-        const response = await fetchOpenAI(`https://api.openai.com/v1/threads/${threadId}/messages?limit=${limit}`, {
-            method: 'GET'
-        }, apiKey, orgId, projectId, 3, 8000);
-        
-        const data = await response.json();
-        console.log(`✅ Retrieved ${data.data.length} messages`);
-        return data.data;
-    } catch (error) {
-        console.error('❌ Failed to get messages:', error);
-        throw new Error(`Getting messages failed: ${error.message}`);
-    }
-}
-
+// Export the enhanced functions
 module.exports = {
-    verifyThread,
-    createThread,
-    getOrCreateThread,
+    verifyThreads,
+    createUnifiedThread,
+    getOrCreateUnifiedThread,
     addMessageToThread,
+    getThreadMessages,
     runThreadWithAssistant,
-    checkRunStatus,
-    getThreadMessages
+    checkRunStatus
 }; 

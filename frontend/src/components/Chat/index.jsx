@@ -105,35 +105,44 @@ const Chat = () => {
 
     const ResponseHandler = {
         // Success Handlers
-        "200": async ({ thread_id, message }) => {
-            // Start streaming response
-            startMessageStream(thread_id);
+        "200": async ({ thread_ids, message, context }) => {
+            // Start streaming response with unified thread IDs
+            startMessageStream(thread_ids.openai);
             showNotification("Agent is responding...", "stream");
+            
+            // Update local context
+            updateThreadContext(context);
         },
 
-        "220": async ({ agent_id }) => {
-            // Initialize new agent session
+        "220": async ({ agent_id, thread_ids, context }) => {
+            // Initialize new agent session with unified thread tracking
             const agentConfig = {
                 "integral_math": { name: "Math Tutor", context: "mathematics" },
                 "bmore_health": { name: "Health Navigator", context: "maternal_health" }
             };
             
-            await initializeAgent(agent_id, agentConfig[agent_id]);
+            await initializeAgent(agent_id, agentConfig[agent_id], thread_ids);
             showNotification(`Connected to ${agentConfig[agent_id].name}`, "agent");
+            
+            // Initialize context
+            updateThreadContext(context);
         },
 
-        "230": async ({ thread_id, context }) => {
-            // Reconnect to existing thread
-            await loadThreadHistory(thread_id);
+        "230": async ({ thread_ids, context }) => {
+            // Reconnect to existing thread with platform-specific IDs
+            await loadThreadHistory(thread_ids);
             showNotification("Continuing previous conversation", "thread");
+            
+            // Restore context
+            updateThreadContext(context);
         },
 
-        "300": async ({ action, params }) => {
-            // Handle dynamic actions
+        "300": async ({ action, params, thread_ids, context }) => {
+            // Handle dynamic actions with context awareness
             const actions = {
-                summarize_thread: summarizeConversation,
-                switch_agent: initiateAgentTransfer,
-                save_profile: saveToUserProfile
+                summarize_thread: (p) => summarizeConversation(p, thread_ids),
+                switch_agent: (p) => initiateAgentTransfer(p, thread_ids, context),
+                save_profile: (p) => saveToUserProfile(p, context)
             };
             
             if (actions[action]) {
@@ -152,19 +161,103 @@ const Chat = () => {
         }
     };
 
-    // Usage in Lambda response handler
-    const handleLambdaResponse = async (response) => {
-        const { status, payload } = response;
+    // Context management functions
+    function updateThreadContext(context) {
+        if (!context) return;
+        
+        // Update local state
+        window.threadContext = context;
+        
+        // Emit context update event
+        window.dispatchEvent(new CustomEvent('thread-context-update', { 
+            detail: context 
+        }));
+    }
+
+    async function loadThreadHistory(thread_ids) {
+        try {
+            // Load messages from all platforms
+            const [openaiHistory, storylineHistory] = await Promise.all([
+                thread_ids.openai ? fetchOpenAIHistory(thread_ids.openai) : [],
+                thread_ids.storyline ? fetchStorylineHistory(thread_ids.storyline) : []
+            ]);
+            
+            // Merge and sort by timestamp
+            const allMessages = [...openaiHistory, ...storylineHistory]
+                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+            // Render in chat
+            allMessages.forEach(msg => {
+                addMessageToChat(msg.content, msg.role, msg.metadata);
+            });
+        } catch (error) {
+            console.error('Failed to load thread history:', error);
+            showNotification("Could not load complete history", "warning");
+        }
+    }
+
+    async function initializeAgent(agentId, config, thread_ids) {
+        // Store agent config
+        window.currentAgent = {
+            id: agentId,
+            config: config,
+            thread_ids: thread_ids
+        };
+        
+        // Initialize platform-specific components
+        if (thread_ids.openai) {
+            await initializeOpenAIAgent(agentId, config);
+        }
+        if (thread_ids.storyline) {
+            await initializeStorylineAgent(config);
+        }
+    }
+
+    // Usage in message handler
+    async function handleMessage(message) {
+        const currentContext = window.threadContext || {};
+        const thread_ids = window.currentAgent?.thread_ids || {
+            openai: null,
+            storyline: null
+        };
         
         try {
-            if (ResponseHandler[status]) {
-                await ResponseHandler[status](payload);
+            const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message,
+                    thread_ids,
+                    context: currentContext,
+                    metadata: {
+                        source: 'web_chat',
+                        timestamp: new Date().toISOString()
+                    }
+                })
+            });
+            
+            const data = await response.json();
+            
+            // Update thread IDs and context
+            if (data.thread_ids) {
+                window.currentAgent = {
+                    ...window.currentAgent,
+                    thread_ids: data.thread_ids
+                };
+            }
+            if (data.context) {
+                updateThreadContext(data.context);
+            }
+            
+            // Handle response
+            if (ResponseHandler[data.status]) {
+                await ResponseHandler[data.status](data);
             }
         } catch (error) {
-            console.error(`Handler error: ${status}`, error);
-            showNotification("Something went wrong", "error");
+            console.error('Message handling failed:', error);
+            showNotification("Failed to process message", "error");
         }
-    };
+    }
 
     const formatMessage = (content) => {
         // Handle different message formats

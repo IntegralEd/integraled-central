@@ -324,11 +324,14 @@ async function logChatInteraction({
     Org_ID,
     Thread_ID,
     interaction_type = 'chat',
-    status = '200'
+    status = '200',
+    source_platform = 'openai',
+    context = {},
+    metadata = {}
 }) {
     const baseWebhookUrl = 'https://hook.us1.make.com/q5affda3x5n8fqp3q7vwdmeyr9apthfr';
     
-    // Basic payload structure
+    // Enhanced payload structure with unified thread tracking
     const payload = {
         User_ID,
         Org_ID,
@@ -337,18 +340,44 @@ async function logChatInteraction({
         interaction: {
             type: interaction_type,
             status: status,
-            source: 'pre_auth_chat'
+            source: source_platform,
+            context_snapshot: {
+                ...context,
+                last_updated: new Date().toISOString()
+            }
+        },
+        metadata: {
+            ...metadata,
+            platform_specific: {
+                openai_thread: source_platform === 'openai' ? Thread_ID : metadata.openai_thread,
+                storyline_state: source_platform === 'storyline' ? Thread_ID : metadata.storyline_state
+            }
         }
     };
 
-    // Sample ticket creation
-    if (interaction_type === 'support_ticket') {
-        payload.ticket = {
-            title: "New Support Request",
-            priority: "medium",
-            category: "general_support",
-            status: "new"
-        };
+    // Handle different interaction types
+    switch(interaction_type) {
+        case 'support_ticket':
+            payload.ticket = {
+                title: metadata.ticket_title || "New Support Request",
+                priority: metadata.priority || "medium",
+                category: metadata.category || "general_support",
+                status: "new"
+            };
+            break;
+        case 'context_update':
+            payload.context_update = {
+                previous: context.previous || {},
+                current: context.current || {},
+                trigger: context.trigger || 'manual'
+            };
+            break;
+        case 'thread_merge':
+            payload.thread_merge = {
+                source_threads: metadata.source_threads || [],
+                merge_reason: metadata.merge_reason || 'user_continuation'
+            };
+            break;
     }
 
     if (status === '130') {
@@ -369,14 +398,20 @@ async function logChatInteraction({
         
         try {
             // Try to parse as JSON first
-            return await response.json();
+            const jsonResponse = await response.json();
+            return {
+                ...jsonResponse,
+                thread_context: payload.interaction.context_snapshot,
+                platform_threads: payload.metadata.platform_specific
+            };
         } catch (e) {
             // If JSON parsing fails, get the text response
             const textResponse = await responseClone.text();
             return { 
                 status: response.status,
                 message: textResponse,
-                success: response.ok 
+                success: response.ok,
+                thread_context: payload.interaction.context_snapshot
             };
         }
     } catch (error) {
