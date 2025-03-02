@@ -22,14 +22,17 @@
         // Get URL params
         const params = new URLSearchParams(window.location.search);
         
-        // Basic context structure
+        // Basic context structure with exact parameter names
         const context = {
-            user_id: params.get('user_id') || null,
-            org_id: params.get('org_id') || null,
-            thread_id: params.get('thread_id') || null,
+            user_id: params.get('user_id') || null,     // Fixed case to match URL
+            org_id: params.get('org_id?') || null,      // Kept as is
+            thread_id: params.get('thread_id') || null,  // Already correct
             source: window.location.href,
             webhook: CHAT_WEBHOOK
         };
+
+        // Log context for debugging
+        console.log('Chat Context:', context);
 
         // Initialize RAG chat with context
         window.ieSupport('init', {
@@ -39,6 +42,7 @@
                 // Update thread ID if received from server
                 if (message.thread_id) {
                     context.thread_id = message.thread_id;
+                    console.log('Updated thread_id:', message.thread_id);
                 }
             }
         });
@@ -49,6 +53,7 @@
         chatButton.className = 'ie-chat-trigger';
         chatButton.innerHTML = '💬 Start Chat';
         chatButton.onclick = () => {
+            console.log('Sending context to webhook:', context);
             // Send initial message to webhook
             fetch(CHAT_WEBHOOK, {
                 method: 'POST',
