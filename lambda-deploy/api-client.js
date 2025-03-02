@@ -5,6 +5,64 @@
 
 const fetch = require('node-fetch');
 const { AbortController } = global;
+const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
+const config = require('./config');
+
+const ssmClient = new SSMClient({ region: config.core.aws.region });
+
+/**
+ * Get agent-specific parameters from SSM
+ * @param {string} agentId - The agent ID to get parameters for
+ * @returns {Promise<Object>} - Object containing API keys and configurations
+ */
+async function getAgentParameters(agentId) {
+    const parameterFormat = config.core.aws.parameterFormat;
+    const basePath = config.core.aws.parameterPath;
+    
+    // Build parameter paths
+    const parameterPaths = {
+        openaiKey: `${basePath}${parameterFormat.secrets.openai.replace('{AGENT_ID}', agentId)}`,
+        airtableToken: `${basePath}${parameterFormat.secrets.airtable.replace('{AGENT_ID}', agentId)}`,
+        makeWebhook: `${basePath}${parameterFormat.secrets.make.replace('{AGENT_ID}', agentId)}`,
+        assistantId: `${basePath}${parameterFormat.config.assistant.replace('{AGENT_ID}', agentId)}`,
+        orgId: `${basePath}${parameterFormat.config.organization.replace('{AGENT_ID}', agentId)}`,
+        projectId: `${basePath}${parameterFormat.config.project.replace('{AGENT_ID}', agentId)}`
+    };
+    
+    try {
+        // Get all parameters in parallel
+        const parameterPromises = Object.values(parameterPaths).map(path => 
+            ssmClient.send(new GetParameterCommand({
+                Name: path,
+                WithDecryption: true
+            })).catch(err => {
+                console.warn(`⚠️ Parameter not found: ${path}`, err.message);
+                return { Parameter: { Value: null } };
+            })
+        );
+        
+        const [
+            openaiKeyParam,
+            airtableTokenParam,
+            makeWebhookParam,
+            assistantIdParam,
+            orgIdParam,
+            projectIdParam
+        ] = await Promise.all(parameterPromises);
+        
+        return {
+            openaiKey: openaiKeyParam.Parameter.Value,
+            airtableToken: airtableTokenParam.Parameter.Value,
+            makeWebhook: makeWebhookParam.Parameter.Value,
+            assistantId: assistantIdParam.Parameter.Value,
+            orgId: orgIdParam.Parameter.Value,
+            projectId: projectIdParam.Parameter.Value
+        };
+    } catch (error) {
+        console.error('❌ Error fetching agent parameters:', error);
+        throw new Error('Failed to retrieve agent parameters');
+    }
+}
 
 /**
  * Enhanced fetch with proper OpenAI headers, timeout handling, and retries
@@ -166,6 +224,7 @@ async function testOpenAIConnection(apiKey, orgId, projectId) {
 }
 
 module.exports = {
+    getAgentParameters,
     fetchOpenAI,
     testOpenAIConnection
 }; 

@@ -9,6 +9,7 @@ const { createActionButton } = require('./modules/actions');
 const { MessageFormatter } = require('./modules/formatter');
 const { sendToMake } = require('./make-integration');
 const config = require('./config');
+const { getAgentParameters, fetchOpenAI } = require('./api-client');
 
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
@@ -130,7 +131,7 @@ async function verifyThreadExists(threadId, openaiApiKey) {
 exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
 
-    const { message, thread_id, User_ID, Organization } = event.body ? JSON.parse(event.body) : {};
+    const { message, thread_id, User_ID, Organization, agent_id } = event.body ? JSON.parse(event.body) : {};
     
     if (!message) {
         return {
@@ -139,30 +140,29 @@ exports.handler = async (event, context) => {
         };
     }
 
+    if (!agent_id) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "Agent ID is required" })
+        };
+    }
+
     try {
-        // Get OpenAI parameters from SSM
-        console.log("🔑 Retrieving API parameters from SSM...");
-        const [openaiKeyParam, assistantIdParam] = await Promise.all([
-            ssmClient.send(new GetParameterCommand({
-                Name: '/rag-bmore/prod/secrets/BmoreKeyOpenAi',
-                WithDecryption: true
-            })),
-            ssmClient.send(new GetParameterCommand({
-                Name: '/rag-bmore/prod/config/OPENAI_ASSISTANT_ID',
-                WithDecryption: true
-            }))
-        ]);
+        // Get agent-specific parameters
+        console.log(`🔑 Retrieving parameters for agent ${agent_id}...`);
+        const agentParams = await getAgentParameters(agent_id);
         
-        const openaiApiKey = openaiKeyParam.Parameter.Value;
-        const assistantId = assistantIdParam.Parameter.Value;
+        if (!agentParams.openaiKey || !agentParams.assistantId) {
+            throw new Error(`Required parameters not found for agent ${agent_id}`);
+        }
         
-        console.log("✅ Retrieved API parameters successfully");
+        console.log("✅ Retrieved agent parameters successfully");
         
         // Create or retrieve thread
         let threadId = thread_id;
         
         if (threadId) {
-            const isValid = await verifyThreadExists(threadId, openaiApiKey);
+            const isValid = await verifyThreadExists(threadId, agentParams.openaiKey);
             if (!isValid) {
                 console.log("⚠️ Provided thread ID is invalid, creating new thread instead");
                 threadId = null;
@@ -171,119 +171,39 @@ exports.handler = async (event, context) => {
             }
         }
         
-        if (!threadId) {
-            console.log("🧵 Creating new thread...");
-            const threadResponse = await fetchWithRetry('https://api.openai.com/v1/threads', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${openaiApiKey}`,
-                    'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v2'
-                },
-                body: JSON.stringify({
-                    metadata: {
-                        user_id: User_ID,
-                        organization: Organization
-                    }
-                })
-            }, 3, 10000);
-            
-            const threadData = await threadResponse.json();
-            threadId = threadData.id;
-            console.log("✅ Created thread:", threadId);
-        }
-        
         // Add message to thread
-        console.log("💬 Adding message to thread...");
-        await addMessageToThread(threadId, message, openaiApiKey);
+        const response = await addMessageToThread({
+            message,
+            threadId,
+            apiKey: agentParams.openaiKey,
+            assistantId: agentParams.assistantId,
+            orgId: agentParams.orgId,
+            projectId: agentParams.projectId
+        });
         
-        // Run the assistant
-        console.log("🤖 Running assistant...");
-        const runResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/runs`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${openaiApiKey}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
-            },
-            body: JSON.stringify({
-                assistant_id: assistantId
-            })
-        }, 3, 10000);
-        
-        const runData = await runResponse.json();
-        const runId = runData.id;
-        console.log("✅ Started run:", runId);
-        
-        // Check run status
-        let runStatus = runData.status;
-        let attempts = 0;
-        const maxAttempts = 20;
-        const pollInterval = 1000;
-        
-        console.log("⏳ Checking run status...");
-        while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
-            attempts++;
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-            
-            const statusResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/runs/${runId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${openaiApiKey}`,
-                    'Content-Type': 'application/json',
-                    'OpenAI-Beta': 'assistants=v2'
-                }
-            }, 3, 8000);
-            
-            const statusData = await statusResponse.json();
-            runStatus = statusData.status;
-            console.log(`⏳ Run status (attempt ${attempts}/${maxAttempts}):`, runStatus);
+        // Log interaction if webhook URL is available
+        if (agentParams.makeWebhook) {
+            await sendToMake({
+                webhookUrl: agentParams.makeWebhook,
+                threadId: response.threadId,
+                userId: User_ID,
+                organization: Organization,
+                messages: response.messages
+            });
         }
         
-        if (runStatus !== 'completed') {
-            throw new Error(`Assistant run did not complete. Status: ${runStatus}`);
-        }
-        
-        // Get messages (including assistant's response)
-        console.log("📨 Retrieving messages...");
-        const messagesResponse = await fetchWithRetry(`https://api.openai.com/v1/threads/${threadId}/messages`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${openaiApiKey}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
-            }
-        }, 3, 8000);
-        
-        const messagesData = await messagesResponse.json();
-        console.log("✅ Retrieved messages:", messagesData.data.length);
-        
-        // Get the latest assistant message
-        const assistantMessages = messagesData.data.filter(msg => msg.role === 'assistant');
-        const latestAssistantMessage = assistantMessages[0];
-        
-        if (!latestAssistantMessage) {
-            throw new Error('No assistant response found');
-        }
-        
-        const assistantResponse = latestAssistantMessage.content[0].text.value;
-        console.log("🤖 Assistant response:", assistantResponse.substring(0, 100) + "...");
-        
-        // Return the response
-        const response = {
+        return {
             statusCode: 200,
-            body: JSON.stringify({
-                message: assistantResponse,
-                thread_id: threadId
-            })
+            body: JSON.stringify(response)
         };
-        
-        return response;
     } catch (error) {
-        console.error('Error:', error);
+        console.error("❌ Error processing request:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: error.message })
+            body: JSON.stringify({
+                error: "Internal server error",
+                message: error.message
+            })
         };
     }
 };
