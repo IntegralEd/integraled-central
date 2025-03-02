@@ -3,109 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Baltimore Health Support</title>
-    <style>
-        .welcome-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    <title>IntegralEd Support</title>
+    <script>
+        // Simple routing for MVP
+        const currentPath = window.location.pathname;
+        const isPreview = window.location.href.includes('preview');
+
+        // Basic routing
+        if (currentPath === '/' || currentPath === '/index.html') {
+            window.location.href = isPreview ? '/bmore/chat?preview=true' : '/user-intake';
         }
 
-        .welcome-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-            padding: 2rem;
-            max-width: 600px;
-            width: 100%;
-            text-align: center;
+        /* 
+        // FUTURE: Complex routing for Storyline integration
+        // Will support: xAPI statements, LRS logging, and multi-tenant routing
+        const CONFIG = {
+            support: {
+                fallback_url: 'https://hook.us1.make.com/3uoptqc52dqt2u2saddqriciwqpyl0k1',
+                business_analyst: 'asst_wa7Bf4SdLZ3tpKb6ExoLkiSr'
+            },
+            routes: {
+                blocked: ['/sign-up'],
+                default: '/user-intake',
+                preview: '/bmore/chat'
+            }
+        };
+
+        function initializeDirectSupport() {
+            return fetch(CONFIG.support.fallback_url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'direct_support',
+                    assistant_id: CONFIG.support.business_analyst,
+                    source: 'universal_fallback'
+                })
+            });
         }
 
-        .logo {
-            width: 120px;
-            height: auto;
-            margin-bottom: 1.5rem;
+        // Complex routing logic for future use
+        if (CONFIG.routes.blocked.includes(currentPath)) {
+            window.location.href = CONFIG.routes.default;
+        } else if (currentPath === '/' || currentPath === '/index.html') {
+            if (isPreview) {
+                window.location.href = `${CONFIG.routes.preview}?preview=true`;
+            } else {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('direct_support') === 'true') {
+                    initializeDirectSupport()
+                        .then(response => {
+                            if (response.ok) {
+                                window.location.href = '/support?mode=direct';
+                            } else {
+                                console.error('Failed to initialize direct support');
+                                window.location.href = CONFIG.routes.default;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            window.location.href = CONFIG.routes.default;
+                        });
+                } else {
+                    window.location.href = CONFIG.routes.default;
+                }
+            }
         }
-
-        .title {
-            color: #1a365d;
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .description {
-            color: #4a5568;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        .cta-button {
-            display: inline-block;
-            background: #4299e1;
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .cta-button:hover {
-            background: #2b6cb0;
-            transform: translateY(-2px);
-        }
-
-        .footer {
-            margin-top: 2rem;
-            color: #718096;
-            font-size: 0.875rem;
-        }
-    </style>
+        */
+    </script>
 </head>
 <body>
-    <div class="welcome-container">
-        <div class="welcome-card">
-            <img src="logo.png" alt="Baltimore Health Support" class="logo">
-            <h1 class="title">Welcome to Baltimore Health Support</h1>
-            <p class="description">
-                We're here to connect you with maternal health resources and support. 
-                Let's get started by creating your account or signing in.
-            </p>
-            <a href="https://bmore.softr.app/user-intake" class="cta-button" id="mainCTA">
-                Get Started
-            </a>
-            <p class="footer">
-                Already have an account? 
-                <a href="https://bmore.softr.app/login" id="loginLink">Sign in here</a>
-            </p>
-        </div>
+    <!-- 
+    FUTURE: Universal Support Fallback
+    Will be used for Storyline integration and direct support routing
+    <div id="ieSupportFallback" style="display: none;">
+        <a href="?direct_support=true" id="directSupportLink">
+            Need immediate assistance? Chat with our Business Analyst
+        </a>
     </div>
 
     <script>
-        // Handle URL parameters and smart redirects
-        document.addEventListener('DOMContentLoaded', function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('User_ID');
-            const orgId = urlParams.get('organization');
-            const threadId = urlParams.get('thread_id');
-
-            // If we have user parameters, update the login link
-            if (userId && orgId) {
-                const loginLink = document.getElementById('loginLink');
-                const nextPage = encodeURIComponent(`/?User_ID=${userId}&organization=${orgId}${threadId ? `&thread_id=${threadId}` : ''}`);
-                loginLink.href = `https://bmore.softr.app/login?next-page=${nextPage}`;
-            }
-
-            // Optional: Auto-redirect after delay
-            // setTimeout(() => {
-            //     window.location.href = 'https://bmore.softr.app/user-intake';
-            // }, 3000);
-        });
+        setTimeout(() => {
+            document.getElementById('ieSupportFallback').style.display = 'block';
+        }, 5000);
     </script>
+    -->
 </body>
 </html> 

@@ -18,16 +18,34 @@
         initializeChat();
     });
 
+    function getSiteContext() {
+        const hostname = window.location.hostname;
+        return {
+            site: hostname.split('.')[0],  // 'bmore' from bmore.softr.app
+            is_preview: hostname.includes('preview'),
+            source_url: window.location.href
+        };
+    }
+
     function initializeChat() {
-        // Get URL params
+        // Get URL params and site context
         const params = new URLSearchParams(window.location.search);
+        const site = getSiteContext();
         
-        // Basic context structure with exact parameter names
+        // Universal metadata structure
         const context = {
-            user_id: params.get('user_id') || null,     // Fixed case to match URL
-            org_id: params.get('org_id?') || null,      // Kept as is
-            thread_id: params.get('thread_id') || null,  // Already correct
-            source: window.location.href,
+            // Core IDs for Make routing
+            User_ID: params.get('user_id') || null,
+            Org_ID: params.get('org_id?') || null,
+            Thread_ID: params.get('thread_id') || null,
+            Module_ID: params.get('module_id') || null,  // New: for recipe loading
+
+            // Site context for routing/preview
+            site_name: site.site,
+            is_preview: site.is_preview,
+            source: site.source_url,
+            
+            // Webhook for Make scenario
             webhook: CHAT_WEBHOOK
         };
 
@@ -41,8 +59,13 @@
             onMessage: (message) => {
                 // Update thread ID if received from server
                 if (message.thread_id) {
-                    context.thread_id = message.thread_id;
-                    console.log('Updated thread_id:', message.thread_id);
+                    context.Thread_ID = message.thread_id;
+                    console.log('Updated Thread_ID:', message.thread_id);
+                }
+                // Handle module loading if received
+                if (message.module_id) {
+                    context.Module_ID = message.module_id;
+                    console.log('Loading Module:', message.module_id);
                 }
             }
         });

@@ -1,3 +1,117 @@
+# IntegralEd Core Platform
+
+## Overview
+IntegralEd Core is a multi-tenant platform that provides AI-powered educational support and learning management capabilities. The platform is designed to be embedded within Softr sites while maintaining consistent branding and functionality across different educational institutions.
+
+## Key Features
+
+### 1. RAG Chat System
+- Contextual AI chat powered by domain-specific knowledge bases
+- Tenant-specific agents with specialized knowledge
+- Real-time learning support and guidance
+- Preview mode for content testing and feedback
+
+### 2. Support System
+- Universal entry point for technical support
+- Automated ticket creation and routing
+- Context-aware issue resolution
+- Integration with existing support workflows
+
+### 3. Learning Management
+- Course progress tracking
+- Achievement system
+- Learning record store (LRS) integration
+- SCORM/xAPI compatibility
+
+## Architecture
+
+### Components
+1. **Core Assets**
+   - CSS Variables and Base Styles
+   - JavaScript Utilities
+   - Agent Configuration System
+   - Event Logging Framework
+
+2. **Tenant System**
+   - Multi-tenant Support
+   - Branding Configuration
+   - Feature Flags
+   - Agent Assignment
+
+3. **Integration Layer**
+   - Make.com Webhooks
+   - LMS Connectors
+   - Analytics Integration
+   - Support Ticket System
+
+## Implementation Guide
+
+### 1. Basic Setup
+1. Add the pre-header code block to your Softr site:
+   ```html
+   <!-- Copy from public/softr/pre-header.html -->
+   ```
+
+2. Create a chat page using:
+   ```html
+   <!-- Copy from public/softr/chat-page.html -->
+   ```
+
+### 2. Configuration
+1. Set up tenant configuration in the admin panel
+2. Configure agents and their capabilities
+3. Customize branding and styling
+4. Enable/disable features as needed
+
+### 3. Testing
+1. Use preview mode for testing new content
+2. Add feedback notes for improvements
+3. Monitor event logs for issues
+4. Test different user scenarios
+
+## Security & Compliance
+
+### Data Protection
+- HIPAA compliance for health data
+- PII protection measures
+- Secure data transmission
+- Audit logging
+
+### Access Control
+- Role-based access
+- Tenant isolation
+- API key management
+- Session security
+
+## Development
+
+### Local Setup
+1. Clone the repository
+2. Install dependencies
+3. Configure environment variables
+4. Start development server
+
+### Contributing
+1. Follow coding standards
+2. Use conventional commits
+3. Submit pull requests
+4. Update documentation
+
+## Support & Resources
+
+### Documentation
+- [API Reference](https://docs.integral-ed.com/api-reference.html)
+- [Integration Guide](https://docs.integral-ed.com/integration-guide.html)
+- [Agent Documentation](https://docs.integral-ed.com/agent-readme.json)
+
+### Contact
+- Technical Support: support@integral-ed.com
+- Documentation: docs@integral-ed.com
+- Security: security@integral-ed.com
+
+## License
+Copyright © 2024 IntegralEd. All rights reserved.
+
 # RAG Document Application
 
 An end-to-end RAG application (from scratch) based on FastAPI that processes PDFs, images, and web pages to obtain OCR data, generates embeddings using OpenAI's embedding models, and utilizes Pinecone as a vector database for search. It answers questions based on search results using OpenAI Chat Completion!
@@ -200,6 +314,44 @@ This project embeds a custom GPT-powered chat interface directly in Softr applic
 - The interface is fully embedded in your Softr application
 - Conversations are stored anonymously using `User_ID` rather than personally identifiable information
 - Future enhancements will personalize responses based on user preferences stored in Airtable
+
+# IntegralEd Central
+
+## Feature Manifest
+
+### MVP Features (Demo Ready)
+- [ ] Context-Aware Chat
+  - [x] Basic chat interface
+  - [x] URL parameter parsing
+  - [ ] Document context integration
+  - [ ] User recognition
+
+- [ ] Document Upload
+  - [ ] Basic file upload
+  - [ ] CSV/spreadsheet parsing
+  - [ ] Document context extraction
+
+- [ ] User Management
+  - [x] URL-based user context
+  - [ ] Basic login flow
+  - [ ] Organization context
+
+### Future Features
+- [ ] Module Directory
+  - [ ] Recipe table integration
+  - [ ] Dynamic prompt loading
+  - [ ] Context override system
+
+- [ ] Integration Tools
+  - [ ] Airtable API integration
+  - [ ] Make.com CLI support
+  - [ ] Webhook management system
+
+### Development Tools
+- [ ] CLI Integrations
+  - [ ] Airtable data sync
+  - [ ] Make.com scenario management
+  - [ ] Webhook testing suite
 
 
 
