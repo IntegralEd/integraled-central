@@ -274,4 +274,49 @@ async function testSyntheticUser() {
     
     // Create test record
     return await createUserRecord(baseId, userTable, syntheticUser);
-} 
+}
+
+// Example webhook response
+async function sendWebhookResponse(userId) {
+    const response = {
+        response: "It looks like you need help with your password. Please follow this link to reset it: [Reset Link]",
+        support_contact: "For further assistance, contact support@example.com"
+    };
+
+    const airtableApiKey = await getAirtableApiKey();
+    const updateUrl = `https://api.airtable.com/v0/User_Table/${encodeURIComponent(userId)}`;
+
+    const response = await fetch(updateUrl, {
+        method: 'PATCH',
+        headers: {
+            Authorization: `Bearer ${airtableApiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(response)
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to send webhook response: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    console.log("✅ Sent webhook response:", result);
+    return result;
+}
+
+function populateTemplate(template, data) {
+    return template.replace(/{(\w+)}/g, function(match, key) {
+        return data[key] || match;
+    });
+}
+
+const template = document.querySelector('.message-block').outerHTML;
+const data = {
+    User_Name: 'John Doe',
+    Greeting_Message: 'Welcome to our platform',
+    Magic_Link: 'https://example.com/magic-link',
+    Chat_URL: 'https://example.com/chat',
+    Redirect_URL: 'https://example.com/redirect'
+};
+
+document.querySelector('.message-block').outerHTML = populateTemplate(template, data); 
