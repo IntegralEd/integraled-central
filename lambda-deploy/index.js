@@ -128,32 +128,49 @@ async function verifyThreadExists(threadId, openaiApiKey) {
     }
 }
 
+// CORS Headers
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type'
+};
+
 exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
+
+    // Handle OPTIONS request for CORS
+    if (event.requestContext?.http?.method === 'OPTIONS') {
+        return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: ''
+        };
+    }
 
     const { message, thread_id, User_ID, Organization, agent_id } = event.body ? JSON.parse(event.body) : {};
     
     if (!message) {
         return {
             statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Message is required" })
         };
     }
 
-    if (!agent_id) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "Agent ID is required" })
-        };
+    // Public access fallback
+    let effectiveAgentId = agent_id;
+    if (!effectiveAgentId) {
+        effectiveAgentId = 'public_demo';
+        console.log('⚠️ No agent_id provided, falling back to public demo agent');
     }
 
     try {
         // Get agent-specific parameters
-        console.log(`🔑 Retrieving parameters for agent ${agent_id}...`);
-        const agentParams = await getAgentParameters(agent_id);
+        console.log(`🔑 Retrieving parameters for agent ${effectiveAgentId}...`);
+        const agentParams = await getAgentParameters(effectiveAgentId);
         
         if (!agentParams.openaiKey || !agentParams.assistantId) {
-            throw new Error(`Required parameters not found for agent ${agent_id}`);
+            throw new Error(`Required parameters not found for agent ${effectiveAgentId}`);
         }
         
         console.log("✅ Retrieved agent parameters successfully");
@@ -192,14 +209,25 @@ exports.handler = async (event, context) => {
             });
         }
         
+        // Add save chat logic
+        const shouldSaveChat = message.toLowerCase().includes('save') || 
+                          response.messages.length > 3;
+
+        if (shouldSaveChat) {
+            console.log('💾 Saving chat session...');
+            // TODO: Implement save logic
+        }
+
         return {
             statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify(response)
         };
     } catch (error) {
         console.error("❌ Error processing request:", error);
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({
                 error: "Internal server error",
                 message: error.message

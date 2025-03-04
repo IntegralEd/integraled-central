@@ -353,6 +353,96 @@ This project embeds a custom GPT-powered chat interface directly in Softr applic
   - [ ] Make.com scenario management
   - [ ] Webhook testing suite
 
+## Dynamic URL Construction and Endpoint Management
+
+### URL Construction Logic
+
+1. **Base Architecture**:
+   - The system uses a Lambda endpoint (`https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/`) as the central communication point.
+   - Each chat interface constructs URLs with specific parameters based on user context.
+
+2. **Parameter Construction**:
+   - Core parameters used across all interfaces:
+     - `User_ID`: Unique identifier for the user (from Airtable/Softr/anonymous).
+     - `Organization`: User's organization or default value.
+     - `thread_id`: Chat thread identifier (if exists).
+
+3. **Context Sources**:
+   - **Softr Embed**: Gets user data from `Softr.user.get()`.
+   - **Direct URL**: Uses URL parameters if provided.
+   - **Anonymous Mode**: Falls back to 'anonymous' user if no context.
+
+### JSON Payload Structure
+
+1. **Standard Chat Message**:
+   ```json
+   {
+       "user_id": "string",
+       "thread_id": "string|null",
+       "organization": "string",
+       "timestamp": "ISO-8601 string",
+       "metadata": {
+           "thread_status": "active|closed",
+           "last_interaction": "ISO-8601 string"
+       }
+   }
+   ```
+
+2. **Feedback Message**:
+   ```json
+   {
+       "type": "chat_feedback",
+       "message": "string",
+       "tenant": "string",
+       "domain": "string",
+       "source": "URL string",
+       "preview": "boolean"
+   }
+   ```
+
+### Data Detection Points for Make
+
+1. **Entry Points**:
+   - New chat initiation.
+   - Message sending.
+   - Feedback submission.
+   - Thread status changes.
+
+2. **Trigger Fields**:
+   ```json
+   {
+     "type": ["chat_message", "chat_feedback"],
+     "thread_status": ["active", "closed"],
+     "organization": ["Bmore", "Softr", "default"],
+     "preview": [true, false]
+   }
+   ```
+
+3. **State Management**:
+   - Thread IDs are stored in `localStorage` with key pattern: `chat_thread_${userId}`.
+   - Session persistence handled through browser storage.
+   - Server-side state managed through `thread_id` tracking.
+
+This architecture allows for:
+- Seamless switching between authenticated and anonymous users.
+- Organization-specific routing.
+- Preview/production environment separation.
+- Centralized webhook handling.
+- Flexible feedback collection.
+- Thread persistence across sessions.
+
+### Endpoint Management
+
+- The current Lambda endpoint is `https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/`.
+- All chat interfaces and feedback mechanisms are routed through this endpoint.
+- The endpoint is designed to handle both authenticated and anonymous requests, with fallback mechanisms for public access.
+
+### Temporary Public Access Keys
+
+- Consider using a public data store or rotated unlisted invisible table to house "temp public access keys".
+- These keys can be offered to users who want to save threads but not identify by email.
+- This approach ensures secure and temporary access without compromising user privacy.
+
 
 
 

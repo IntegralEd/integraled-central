@@ -178,7 +178,7 @@ function sendMessage() {
     const context = window.ieSupport('getContext');
     
     if (context?.tenant) {
-        fetch('https://hook.us1.make.com/r7d3v4vyohi00s68spr8y5mcsgk7jsbz', {
+        fetch('https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -252,7 +252,7 @@ function addFeedback() {
     const context = window.ieSupport('getContext');
 
     // Send feedback to webhook
-    fetch('https://hook.us1.make.com/r7d3v4vyohi00s68spr8y5mcsgk7jsbz', {
+    fetch('https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

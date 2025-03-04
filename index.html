@@ -153,7 +153,7 @@
         const sendButton = document.getElementById('sendButton');
         
         // Lambda URL
-        const LAMBDA_URL = 'https://lfx6tvyrslqyrpmhphy3bkbrza0clbxv.lambda-url.us-east-2.on.aws';
+        const CHAT_WEBHOOK = 'https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/';
         
         // Thread ID storage
         let threadId = localStorage.getItem(`chat_thread_${userId}`);
@@ -231,7 +231,7 @@
             
             try {
                 // Call Lambda function
-                const response = await fetchWithRetry(LAMBDA_URL, {
+                const response = await fetchWithRetry(CHAT_WEBHOOK, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

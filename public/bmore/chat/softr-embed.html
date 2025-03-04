@@ -13,7 +13,7 @@
   // Use a self-executing function to avoid global namespace pollution
   (function() {
     // Configuration
-    const GITHUB_PAGES_URL = 'https://integraled.github.io/rag-bmore-app/';
+    const GITHUB_PAGES_URL = 'https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/';
     const CHAT_VERSION = '1.0.1'; // Update this when making changes to force cache refresh
     const DEBUG_MODE = false; // Set to true to enable detailed console logging
     
@@ -47,7 +47,7 @@
           const userOrg = userData?.Organization || userData?.organization || 'Softr';
           
           // Construct iframe URL with parameters
-          const iframeUrl = new URL('https://integraled.github.io/integraled-central/');
+          const iframeUrl = new URL('https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/');
           iframeUrl.searchParams.set('User_ID', userId);
           iframeUrl.searchParams.set('Organization', userOrg);
           if (userData.thread_id) {
