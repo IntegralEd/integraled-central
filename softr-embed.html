@@ -1,19 +1,28 @@
-<!-- Baltimore Maternal Health Assistant - Softr Embed Code -->
+<!-- IE Softr Chat Container - Softr Embed Code -->
 <!-- Version 1.0.1 - Last updated: 2023-06-15 -->
 
-<div id="bmore-chat-container">
-  <div id="bmore-loading-message">
-    <h3>Welcome <span id="bmore-user-name">there</span>!</h3>
-    <p>We're preparing your personalized maternal health assistant...</p>
+<!-- IntegralEd Central -->
+<link rel="stylesheet" href="https://cdn.integral-ed.com/assets/css/ie-core.css">
+<script src="https://cdn.integral-ed.com/assets/js/ie-core.js"></script>
+
+<!-- Support Container -->
+<div id="ieSupportContainer"></div>
+
+<!-- Preheader for Softr chat widget and styling -->
+
+<div id="chat-container">
+  <div id="loading-message">
+    <h3>Welcome <span id="user-name">there</span>!</h3>
+    <p>We're preparing your personalized assistant...</p>
   </div>
-  <div id="bmore-iframe-container" style="display: none; width: 100%; height: 600px;"></div>
+  <div id="iframe-container" style="display: none; width: 100%; height: 600px;"></div>
 </div>
 
 <script>
   // Use a self-executing function to avoid global namespace pollution
   (function() {
     // Configuration
-    const GITHUB_PAGES_URL = 'https://integraled.github.io/rag-bmore-app/';
+    const GITHUB_PAGES_URL = 'https://integraled.github.io/integraled-central/';
     const CHAT_VERSION = '1.0.1'; // Update this when making changes to force cache refresh
     const DEBUG_MODE = false; // Set to true to enable detailed console logging
     
@@ -27,10 +36,10 @@
     // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
       // Safely get elements with null checks
-      const chatContainer = document.getElementById('bmore-chat-container');
-      const loadingMessage = document.getElementById('bmore-loading-message');
-      const userNameSpan = document.getElementById('bmore-user-name');
-      const iframeContainer = document.getElementById('bmore-iframe-container');
+      const chatContainer = document.getElementById('chat-container');
+      const loadingMessage = document.getElementById('loading-message');
+      const userNameSpan = document.getElementById('user-name');
+      const iframeContainer = document.getElementById('iframe-container');
       
       // Check if all elements exist
       if (!chatContainer || !loadingMessage || !userNameSpan || !iframeContainer) {
@@ -174,7 +183,7 @@
 </script>
 
 <style>
-  #bmore-chat-container {
+  #chat-container {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
     max-width: 800px;
     margin: 0 auto;
@@ -184,7 +193,7 @@
     background: white;
   }
   
-  #bmore-loading-message {
+  #loading-message {
     padding: 40px 20px;
     text-align: center;
     background: #f9f9f9;
@@ -196,20 +205,20 @@
     align-items: center;
   }
   
-  #bmore-loading-message h3 {
+  #loading-message h3 {
     margin-bottom: 16px;
     color: #333;
     font-size: 24px;
   }
   
-  #bmore-loading-message p {
+  #loading-message p {
     color: #666;
     font-size: 16px;
     line-height: 1.5;
     margin-bottom: 12px;
   }
   
-  #bmore-iframe-container {
+  #iframe-container {
     border-radius: 8px;
     overflow: hidden;
     height: 600px;
@@ -218,40 +227,40 @@
   
   /* Responsive adjustments */
   @media (max-width: 768px) {
-    #bmore-chat-container {
+    #chat-container {
       border-radius: 0;
       box-shadow: none;
       margin: 0;
       width: 100%;
     }
     
-    #bmore-iframe-container {
+    #iframe-container {
       height: 500px;
     }
   }
   
   /* Mobile portrait mode */
   @media (max-width: 480px) {
-    #bmore-iframe-container {
+    #iframe-container {
       height: 400px;
     }
   }
   
   /* Dark mode support */
   @media (prefers-color-scheme: dark) {
-    #bmore-chat-container {
+    #chat-container {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     
-    #bmore-loading-message {
+    #loading-message {
       background: #2a2a2a;
     }
     
-    #bmore-loading-message h3 {
+    #loading-message h3 {
       color: #e0e0e0;
     }
     
-    #bmore-loading-message p {
+    #loading-message p {
       color: #b0b0b0;
     }
   }
