@@ -1,0 +1,10 @@
+https://us-east-2.console.aws.amazon.com/cloudwatch/home?region=us-east-2#logsV2:log-groups/log-group/IntegralEdMain/log-events/IntegralEdMain-ChatLog{
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.759.0"
+  },
+  "scripts": {
+    "test": "node test/test-interactions.js",
+    "test:make": "node test/test-make-integration.js",
+    "test:all": "npm run test && npm run test:make"
+  }
+}

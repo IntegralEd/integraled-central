@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntegralEd Support</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-container {
+            flex: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f7;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .agent {
+            background: white;
+            align-self: flex-start;
+        }
+        .user {
+            background: #007AFF;
+            color: white;
+            align-self: flex-end;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-messages" id="messages">
+            <div class="message agent" id="welcomeMessage">
+                Hello! I'm your IntegralEd support assistant. How can I help you today?
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type your message here..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Track conversation context
+        const conversationContext = {
+            sessionId: 'session_' + Date.now(),
+            source: window.location.href,
+            threadId: null,
+            currentAgent: null,
+            context: null
+        };
+
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('agent') === 'business-analyst') {
+            conversationContext.currentAgent = 'asst_XWfZuilYGeD8Y4SiHMZ9mY';
+            try {
+                conversationContext.context = JSON.parse(decodeURIComponent(urlParams.get('context')));
+            } catch (e) {
+                console.error('Failed to parse context:', e);
+            }
+        }
+
+        // Update welcome message based on context
+        if (urlParams.get('agent') === 'business-analyst') {
+            document.getElementById('welcomeMessage').textContent = 
+                "Hello! I'm the Business Analyst assistant. I'm here to collect your feedback about the Baltimore RAG Chat experience. Please share your thoughts about the interface, interactions, or any suggestions for improvement.";
+            document.getElementById('userInput').placeholder = "Share your feedback about the chat experience...";
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const response = await fetch('https://hook.us1.make.com/r7d3v4vyohi00s68spr8y5mcsgk7jsbz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        source: window.location.href,
+                        type: conversationContext.context?.type || "support_request",
+                        agent_id: conversationContext.currentAgent,
+                        thread_id: conversationContext.threadId,
+                        preview: window.location.href.includes('preview'),
+                        context: conversationContext.context || {}
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.thread_id && !conversationContext.threadId) {
+                        conversationContext.threadId = data.thread_id;
+                    }
+
+                    if (data.message) {
+                        if (typeof data.message === 'string') {
+                            addMessage(data.message, 'agent');
+                        } else if (data.message.content) {
+                            data.message.content.forEach(content => {
+                                if (content.type === 'text') {
+                                    addMessage(content.text.value, 'agent');
+                                }
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to send message:', error);
+                addMessage('This feature is currently under construction. Please visit support.integraled.org for immediate assistance.', 'agent');
+            }
+        }
+
+        function addMessage(text, type) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+    </script>
+</body>
+</html> 

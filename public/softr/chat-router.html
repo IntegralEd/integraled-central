@@ -1,0 +1,124 @@
+<!-- DNS Prefetch for Performance -->
+<link rel="dns-prefetch" href="https://cdn.integral-ed.com">
+
+<!-- IntegralEd Core -->
+<link rel="stylesheet" href="https://cdn.integral-ed.com/assets/css/ie-core.css">
+<script src="https://cdn.integral-ed.com/assets/js/ie-core.js"></script>
+
+<!-- IntegralEd Router -->
+<script src="https://cdn.integral-ed.com/assets/js/ie-router.js"></script>
+
+<!-- IntegralEd Chat Router v1.0.0 -->
+<script>
+(function() {
+    const CHAT_WEBHOOK = 'https://hook.us1.make.com/21ijgc0kdupqozwbwesprpt66ic21qrn';
+
+    // Initialize when IntegralEd is ready
+    window.addEventListener('ieReady', function() {
+        initializeChat();
+    });
+
+    function getSiteContext() {
+        const hostname = window.location.hostname;
+        return {
+            site: hostname.split('.')[0],  // 'bmore' from bmore.softr.app
+            is_preview: hostname.includes('preview'),
+            source_url: window.location.href
+        };
+    }
+
+    function initializeChat() {
+        // Get URL params and site context
+        const params = new URLSearchParams(window.location.search);
+        const site = getSiteContext();
+        
+        // Universal metadata structure
+        const context = {
+            // Core IDs for Make routing
+            User_ID: params.get('user_id') || null,
+            Org_ID: params.get('org_id?') || null,
+            Thread_ID: params.get('thread_id') || null,
+            Module_ID: params.get('module_id') || null,  // New: for recipe loading
+
+            // Site context for routing/preview
+            site_name: site.site,
+            is_preview: site.is_preview,
+            source: site.source_url,
+            
+            // Webhook for Make scenario
+            webhook: CHAT_WEBHOOK
+        };
+
+        // Log context for debugging
+        console.log('Chat Context:', context);
+
+        // Initialize RAG chat with context
+        window.ieSupport('init', {
+            context,
+            webhook: CHAT_WEBHOOK,
+            onMessage: (message) => {
+                // Update thread ID if received from server
+                if (message.thread_id) {
+                    context.Thread_ID = message.thread_id;
+                    console.log('Updated Thread_ID:', message.thread_id);
+                }
+                // Handle module loading if received
+                if (message.module_id) {
+                    context.Module_ID = message.module_id;
+                    console.log('Loading Module:', message.module_id);
+                }
+            }
+        });
+
+        // Add chat trigger
+        const container = document.getElementById('ieSupportContainer');
+        const chatButton = document.createElement('button');
+        chatButton.className = 'ie-chat-trigger';
+        chatButton.innerHTML = '💬 Start Chat';
+        chatButton.onclick = () => {
+            console.log('Sending context to webhook:', context);
+            // Send initial message to webhook
+            fetch(CHAT_WEBHOOK, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(context)
+            }).then(() => {
+                window.ieSupport('openChat');
+            });
+        };
+        container.appendChild(chatButton);
+    }
+})();
+</script>
+
+<!-- Support Container -->
+<div id="ieSupportContainer"></div>
+
+<style>
+#ieSupportContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: var(--ie-layer-floating);
+}
+
+.ie-chat-trigger {
+    padding: 12px 24px;
+    border-radius: 24px;
+    background: var(--ie-primary);
+    border: none;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ie-chat-trigger:hover {
+    opacity: 0.9;
+}
+</style> 

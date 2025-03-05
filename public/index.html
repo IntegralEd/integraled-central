@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntegralEd Support</title>
+    <script>
+        // Simple routing for MVP
+        const currentPath = window.location.pathname;
+        const isPreview = window.location.href.includes('preview');
+
+        // Basic routing
+        if (currentPath === '/' || currentPath === '/index.html') {
+            window.location.href = isPreview ? '/bmore/chat?preview=true' : '/user-intake';
+        }
+
+        /* 
+        // FUTURE: Complex routing for Storyline integration
+        // Will support: xAPI statements, LRS logging, and multi-tenant routing
+        const CONFIG = {
+            support: {
+                fallback_url: 'https://hook.us1.make.com/3uoptqc52dqt2u2saddqriciwqpyl0k1',
+                business_analyst: 'asst_wa7Bf4SdLZ3tpKb6ExoLkiSr'
+            },
+            routes: {
+                blocked: ['/sign-up'],
+                default: '/user-intake',
+                preview: '/bmore/chat'
+            }
+        };
+
+        function initializeDirectSupport() {
+            return fetch(CONFIG.support.fallback_url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    event_type: 'direct_support',
+                    assistant_id: CONFIG.support.business_analyst,
+                    source: 'universal_fallback'
+                })
+            });
+        }
+
+        // Complex routing logic for future use
+        if (CONFIG.routes.blocked.includes(currentPath)) {
+            window.location.href = CONFIG.routes.default;
+        } else if (currentPath === '/' || currentPath === '/index.html') {
+            if (isPreview) {
+                window.location.href = `${CONFIG.routes.preview}?preview=true`;
+            } else {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('direct_support') === 'true') {
+                    initializeDirectSupport()
+                        .then(response => {
+                            if (response.ok) {
+                                window.location.href = '/support?mode=direct';
+                            } else {
+                                console.error('Failed to initialize direct support');
+                                window.location.href = CONFIG.routes.default;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            window.location.href = CONFIG.routes.default;
+                        });
+                } else {
+                    window.location.href = CONFIG.routes.default;
+                }
+            }
+        }
+        */
+    </script>
+</head>
+<body>
+    <!-- 
+    FUTURE: Universal Support Fallback
+    Will be used for Storyline integration and direct support routing
+    <div id="ieSupportFallback" style="display: none;">
+        <a href="?direct_support=true" id="directSupportLink">
+            Need immediate assistance? Chat with our Business Analyst
+        </a>
+    </div>
+
+    <script>
+        setTimeout(() => {
+            document.getElementById('ieSupportFallback').style.display = 'block';
+        }, 5000);
+    </script>
+    -->
+</body>
+</html> 

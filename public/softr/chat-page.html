@@ -1,0 +1,267 @@
+<!-- IntegralEd Chat Page v1.0.0 -->
+<div class="ie-chat-page">
+    <!-- Chat Interface -->
+    <div class="ie-chat-container">
+        <div class="ie-chat-messages" id="ieMessages">
+            <!-- Messages will be inserted here -->
+        </div>
+        <div class="ie-chat-input">
+            <textarea 
+                id="ieInput" 
+                placeholder="Type your message..." 
+                rows="1"
+                onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }">
+            </textarea>
+            <button onclick="sendMessage()" class="ie-button">Send</button>
+        </div>
+    </div>
+
+    <!-- Preview Mode Feedback Panel -->
+    <div id="ieFeedbackPanel" class="ie-feedback-panel">
+        <div class="ie-feedback-header">
+            <h3>Testing Notes</h3>
+            <button onclick="toggleFeedback()" class="ie-button-icon">
+                <span class="ie-icon">✕</span>
+            </button>
+        </div>
+        <div class="ie-feedback-content">
+            <textarea 
+                id="ieFeedbackInput" 
+                placeholder="Add testing notes..."
+                rows="3">
+            </textarea>
+            <button onclick="addFeedback()" class="ie-button">Add Note</button>
+        </div>
+        <div id="ieFeedbackNotes" class="ie-feedback-notes">
+            <!-- Feedback notes will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<style>
+/* Chat Page Layout */
+.ie-chat-page {
+    display: flex;
+    gap: var(--ie-spacing-lg);
+    padding: var(--ie-spacing-lg);
+    min-height: 600px;
+    height: calc(100vh - 200px); /* Adjust based on Softr header/footer */
+}
+
+/* Chat Container */
+.ie-chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--ie-surface);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.ie-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--ie-spacing-lg);
+}
+
+.ie-chat-input {
+    padding: var(--ie-spacing-md);
+    background: var(--ie-surface-raised);
+    border-top: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    gap: var(--ie-spacing-md);
+}
+
+.ie-chat-input textarea {
+    flex: 1;
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: var(--ie-spacing-md);
+    resize: none;
+    font-family: inherit;
+    font-size: 16px;
+}
+
+/* Feedback Panel */
+.ie-feedback-panel {
+    width: 300px;
+    background: var(--ie-surface-raised);
+    border-radius: 12px;
+    display: none;
+    flex-direction: column;
+}
+
+.ie-feedback-panel.preview-mode {
+    display: flex;
+}
+
+.ie-feedback-header {
+    padding: var(--ie-spacing-md);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ie-feedback-content {
+    padding: var(--ie-spacing-md);
+}
+
+.ie-feedback-notes {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--ie-spacing-md);
+}
+
+.ie-feedback-note {
+    background: var(--ie-surface);
+    padding: var(--ie-spacing-md);
+    border-radius: 8px;
+    margin-bottom: var(--ie-spacing-md);
+}
+
+.ie-button-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--ie-spacing-xs);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ie-button-icon:hover {
+    background: var(--ie-surface);
+}
+</style>
+
+<script>
+// Initialize chat when IntegralEd is ready
+window.addEventListener('ieReady', function() {
+    const isPreview = window.location.href.includes('preview');
+    const feedbackPanel = document.getElementById('ieFeedbackPanel');
+    
+    if (isPreview) {
+        feedbackPanel.classList.add('preview-mode');
+    }
+});
+
+// Initialize chat when tenant is ready
+window.addEventListener('ieTenantReady', function(event) {
+    const { tenant, domain } = event.detail;
+    const agent = window.ieAgents[tenant]?.primary;
+
+    if (agent) {
+        addMessage({
+            type: 'agent',
+            text: agent.welcomeMessage || `Hello! I'm here to help with any questions about ${tenant}.`,
+            agent
+        });
+    }
+});
+
+function sendMessage() {
+    const input = document.getElementById('ieInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    addMessage({
+        type: 'user',
+        text: message
+    });
+    input.value = '';
+
+    // Get current agent context from support system
+    const context = window.ieSupport('getContext');
+    
+    if (context?.tenant) {
+        fetch('https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message,
+                ...context,
+                source: window.location.href,
+                preview: window.location.href.includes('preview')
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                const agent = window.ieAgents[context.tenant]?.primary;
+                addMessage({
+                    type: 'agent',
+                    text: data.message,
+                    agent
+                });
+            }
+        })
+        .catch(console.error);
+    }
+}
+
+function addMessage({ type, text, agent }) {
+    const messages = document.getElementById('ieMessages');
+    const div = document.createElement('div');
+    div.className = `ie-message ${type}`;
+    
+    if (type === 'agent' && agent) {
+        div.innerHTML = `
+            <div class="ie-message-header">
+                <div class="ie-agent-icon">
+                    <img src="${agent.icon}" alt="${agent.name}">
+                </div>
+                <span>${agent.name}</span>
+            </div>
+        `;
+    }
+    
+    const content = document.createElement('div');
+    content.className = 'ie-message-content';
+    content.textContent = text;
+    div.appendChild(content);
+    
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function toggleFeedback() {
+    const panel = document.getElementById('ieFeedbackPanel');
+    panel.classList.toggle('preview-mode');
+}
+
+function addFeedback() {
+    const input = document.getElementById('ieFeedbackInput');
+    const note = input.value.trim();
+    if (!note) return;
+
+    const notes = document.getElementById('ieFeedbackNotes');
+    const div = document.createElement('div');
+    div.className = 'ie-feedback-note';
+    div.innerHTML = `
+        <div>${note}</div>
+        <div class="ie-timestamp">${new Date().toLocaleTimeString()}</div>
+    `;
+    notes.prepend(div);
+    input.value = '';
+
+    // Get current context from support system
+    const context = window.ieSupport('getContext');
+
+    // Send feedback to webhook
+    fetch('https://ctgzczpglrpxybze2jz7iewmjq0wfhcp.lambda-url.us-east-2.on.aws/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            type: 'chat_feedback',
+            message: note,
+            ...context,
+            source: window.location.href,
+            preview: true
+        })
+    }).catch(console.error);
+}
+</script> 
