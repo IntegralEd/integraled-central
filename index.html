@@ -139,7 +139,7 @@
     <script>
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
-        const userId = urlParams.get('User_ID') || 'anonymous';
+        const userId = urlParams.get('User_ID') || '---'; // Use "---" for public users
         const organization = urlParams.get('Organization') || 'default';
         const userName = urlParams.get('Name') || '';
         const userEmail = urlParams.get('Email') || '';
@@ -267,6 +267,15 @@
         
         // Initialize chat
         addWelcomeMessage();
+
+        // Routing logic based on user identification
+        if (userId === '---') {
+            // Route to public chat intake
+            console.log('Routing to public chat intake');
+        } else {
+            // Route to personalized chat
+            console.log('Routing to personalized chat');
+        }
     </script>
 </body>
 </html>
