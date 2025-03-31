@@ -1,25 +1,35 @@
 # Lambda MVP Launch Checklist (03/31/2025)
 
+## Working Norms
+- [x] No new tools/tech - stick to existing proven stack
+- [x] Clear consistent comments - document decisions and rationale
+- [x] Assume deliberate architecture - respect existing 300+ hours of work
+- [x] Efficient decision making process:
+  1. AI proposes best options based on rules/values
+  2. Internal CTO review using MDC (Minimum Decision Criteria)
+  3. Present aligned paths for execution
+  4. Get user approval on final decisions
+
 ## Initial Setup
-- [ ] Verify Node.js version matches Lambda runtime
+- [x] Verify Node.js version matches Lambda runtime
   ```bash
   node -v  # Should be v18.x
   ```
   - If incorrect: `nvm install 18 && nvm use 18`
 
-- [ ] Install required packages
+- [x] Install required packages
   ```bash
   npm install node-fetch aws-sdk dotenv
   ```
 
 ## Environment Configuration
-- [ ] Verify AWS CLI configuration
+- [x] Verify AWS CLI configuration
   ```bash
   aws configure list
   ```
   Expected region: us-east-2
 
-- [ ] Verify API Gateway endpoint
+- [x] Verify API Gateway endpoint
   ```
   https://tixnmh1pe8.execute-api.us-east-2.amazonaws.com/prod/IntegralEd-Main
   ```
