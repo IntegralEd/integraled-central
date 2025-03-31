@@ -139,3 +139,29 @@ console.log('Async Operation:', {
   ```bash
   aws lambda update-alias --function-name IntegralEd-Main --name prod --function-version [PREVIOUS_VERSION]
   ``` 
+
+## Git Workflow Protocol
+- [ ] Before each commit:
+  1. Zip Lambda changes: `./scripts/zip-lambda.sh`
+  2. Save current Lambda version ARN
+  3. Update test results in commit message
+
+- [ ] Commit message format:
+  ```
+  test: [test-name] - [result]
+  - [key observation]
+  - [rollback ARN]
+  ```
+
+- [ ] After commit:
+  1. Push to main branch
+  2. Tag with version number
+  3. Document rollback command
+
+- [ ] Rollback procedure:
+  1. Use saved Lambda version ARN
+  2. Execute rollback command:
+     ```bash
+     aws lambda update-alias --function-name IntegralEd-Main --name prod --function-version [PREVIOUS_VERSION]
+     ```
+  3. Verify rollback in AWS Console 
