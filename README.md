@@ -443,6 +443,47 @@ This architecture allows for:
 - These keys can be offered to users who want to save threads but not identify by email.
 - This approach ensures secure and temporary access without compromising user privacy.
 
+# IntegralEd Lambda Backend
+
+Lambda backend for the IntegralEd chatbot system, providing a standardized API for client frontends.
+
+## API Protocol
+
+### Required Fields
+
+#### Request Body
+- `message` (string): User's input
+- `org_id` (string): Client organization key (e.g., `"bhb"`, `"st"`)
+
+#### Optional Headers
+```json
+{
+  "user_id": "string",
+  "thread_id": "string",
+  "assistant_id": "string",
+  "ts": "timestamp"
+}
+```
+
+### Endpoints
+
+#### POST /handshake
+Verifies API connectivity and returns protocol information.
+
+#### POST /
+Main chat endpoint for processing messages and managing threads.
+
+## Development
+
+```bash
+npm install
+npm test
+```
+
+## Deployment
+
+Deploy to AWS Lambda using the provided deployment scripts.
+
 
 
 

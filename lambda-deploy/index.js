@@ -4,12 +4,13 @@ const { AbortController } = global;
 const ssmClient = new SSMClient({ region: "us-east-2" });
 const { addMessageToThread, verifyThreadExists } = require('./modules/thread-manager');
 const { getTableSchema } = require('./airtable-utils');
-const { streamResponse } = require('./modules/streaming');
+const { streamResponse, fetchWithTimeout, fetchWithRetry } = require('./modules/streaming');
 const { createActionButton } = require('./modules/actions');
-const { MessageFormatter } = require('./modules/formatter');
+const { MessageFormatter, formatResponse, formatError } = require('./modules/formatter');
 const { sendToMake } = require('./make-integration');
 const config = require('./config');
-const { getAgentParameters, fetchOpenAI } = require('./api-client');
+const { getAgentParameters } = require('./api-client');
+const { v4: uuidv4 } = require('uuid');
 
 async function fetchWithTimeout(url, options, timeoutMs = 8000) {
     console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
@@ -82,30 +83,6 @@ function getRequestOrigin(event) {
     return isHttpRequest(event) ? (event.headers?.origin || 'unknown') : 'direct-invocation';
 }
 
-// When making API calls to OpenAI, add the Project header
-async function fetchOpenAI(url, options = {}, apiKey, orgId, projectId) {
-    // Prepare OpenAI headers
-    const headers = {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-    };
-    
-    // Add organization header if available
-    if (orgId) {
-        console.log(`🏢 Using OpenAI Organization ID: ${orgId}`);
-        headers['OpenAI-Organization'] = orgId;
-    }
-    
-    // Add project header if available - CRITICAL FOR PROJECT API KEYS
-    if (projectId) {
-        console.log(`📂 Using OpenAI Project ID: ${projectId}`);
-        headers['OpenAI-Project'] = projectId;
-    }
-    
-    // ... rest of function
-}
-
 async function verifyThreadExists(threadId, openaiApiKey) {
     if (!threadId) return false;
     
@@ -159,54 +136,42 @@ async function handleHandshake(event) {
     };
 }
 
-exports.handler = async (event, context) => {
-    console.log("🔄 Received event:", event);
-
-    // Handle OPTIONS request for CORS
-    if (event.requestContext?.http?.method === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: ''
-        };
-    }
-
-    // Route to appropriate handler
-    if (event.path === '/handshake') {
-        return handleHandshake(event);
-    }
-
-    // Parse request body
-    const body = event.body ? JSON.parse(event.body) : {};
-    const { message, Assistant_ID, User_ID, Thread_ID } = body;
-
-    if (!message || !Assistant_ID) {
-        return {
-            statusCode: 400,
-            headers: corsHeaders,
-            body: JSON.stringify({ 
-                error: "Missing required fields",
-                required: ["message", "Assistant_ID"]
-            })
-        };
-    }
-
+async function handleChat(event) {
     try {
-        // Get OpenAI key from SSM (single key for all requests)
-        console.log('🔑 Retrieving OpenAI key...');
-        const openaiKey = await getOpenAIKey();
-        
-        if (!openaiKey) {
-            throw new Error('OpenAI key not found in SSM');
+        const body = JSON.parse(event.body);
+        const { message, Assistant_ID, User_ID, Thread_ID } = body;
+
+        if (!message || !Assistant_ID) {
+            return formatError(400, 'Missing required fields: message and Assistant_ID');
         }
-        
-        console.log("✅ Retrieved OpenAI key successfully");
-        
+
+        // Get OpenAI key from SSM
+        const { openai_key } = await getAgentParameters();
+
+        // Add message to thread
+        const messageResponse = await fetchWithRetry('https://api.openai.com/v1/threads/messages', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${openai_key}`,
+                'Content-Type': 'application/json',
+                'OpenAI-Beta': 'assistants=v1'
+            },
+            body: JSON.stringify({
+                thread_id: Thread_ID,
+                role: 'user',
+                content: message
+            })
+        });
+
+        if (!messageResponse.ok) {
+            throw new Error(`Failed to add message: ${messageResponse.statusText}`);
+        }
+
         // Use provided thread_id or create new one
         let effectiveThreadId = Thread_ID;
         
         if (effectiveThreadId) {
-            const isValid = await verifyThreadExists(effectiveThreadId, openaiKey);
+            const isValid = await verifyThreadExists(effectiveThreadId, openai_key);
             if (!isValid) {
                 console.log("⚠️ Provided thread ID is invalid, creating new thread");
                 effectiveThreadId = null;
@@ -219,7 +184,7 @@ exports.handler = async (event, context) => {
         const response = await addMessageToThread({
             message,
             threadId: effectiveThreadId,
-            apiKey: openaiKey,
+            apiKey: openai_key,
             assistantId: Assistant_ID,
             metadata: {
                 user_id: User_ID
@@ -242,7 +207,7 @@ exports.handler = async (event, context) => {
             })
         };
     }
-};
+}
 
 // Helper function to poll run status
 async function checkRunStatus(apiKey, threadId, runId) {
@@ -291,7 +256,7 @@ if (event.rawPath === '/thread-status') {
         const statusResponse = await fetch(`https://api.openai.com/v1/threads/${thread_id}/runs`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${openaiApiKey}`,
+                'Authorization': `Bearer ${openai_key}`,
                 'Content-Type': 'application/json',
                 'OpenAI-Beta': 'assistants=v2'
             }
