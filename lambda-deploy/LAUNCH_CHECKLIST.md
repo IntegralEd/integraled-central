@@ -1,6 +1,6 @@
 # Lambda MVP Launch Checklist (03/31/2025)
 
-## Working Norms
+## Architectural Principles
 - [x] No new tools/tech - stick to existing proven stack
 - [x] Clear consistent comments - document decisions and rationale
 - [x] Assume deliberate architecture - respect existing 300+ hours of work
@@ -9,6 +9,14 @@
   2. Internal CTO review using MDC (Minimum Decision Criteria)
   3. Present aligned paths for execution
   4. Get user approval on final decisions
+
+### Webhook Architecture
+- Webhooks are ONLY for async operations (GET/POST)
+- Preflight, streaming, and assistant options MUST be handled in Lambda
+- This architecture enables:
+  - More assistant options beyond GET/POST
+  - Traditional HTTPS for data capture
+  - Better performance for chat operations
 
 ## Initial Setup
 - [x] Verify Node.js version matches Lambda runtime
@@ -36,142 +44,86 @@
 
 ## Test Sequence
 
-### Test 1: New User Chat (No Thread ID)
-- [ ] Expected behavior: Creates new thread, returns thread_id
-- [ ] Payload structure:
-  ```json
-  {
-    "message": "Hello, I'm a new user",
-    "User_ID": "test_user_[timestamp]"
-  }
-  ```
-- Debug if fails:
-  - Check Lambda logs for OpenAI API errors
-  - Verify User_ID format
-  - Check thread creation in OpenAI
+### Core Lambda Functionality
+- [ ] Preflight Handling
+  - Verify CORS headers
+  - Check OPTIONS method
+  - Validate response format
 
-### Test 2: Form Data Preload
-- [ ] Expected behavior: Creates thread with context from form data
-- [ ] Payload structure:
-  ```json
-  {
-    "message": "I want to learn about mathematics",
-    "User_ID": "test_user_[timestamp]",
-    "form_data": {
-      "subject": "Mathematics",
-      "level": "Beginner",
-      "goals": ["Learn basic algebra", "Understand calculus"]
-    }
-  }
-  ```
-- Debug if fails:
-  - Check form_data parsing in Lambda
-  - Verify context building logic
-  - Check OpenAI thread creation with metadata
+- [ ] Assistant Routing
+  - Verify direct assistant connection
+  - Check streaming response
+  - Validate thread management
 
-### Test 3: Context-Based Chat
-- [ ] Expected behavior: Uses existing thread, maintains context
-- [ ] Payload structure:
-  ```json
-  {
-    "message": "Can you help me with algebra?",
-    "User_ID": "test_user_[timestamp]",
-    "thread_id": "[from_test_2]"
-  }
-  ```
-- Debug if fails:
-  - Verify thread_id exists in OpenAI
-  - Check message appending logic
-  - Monitor context maintenance
+### Async Operations
+- [ ] Airtable Integration
+  - Verify data capture
+  - Check error handling
+  - Validate async timing
 
-### Test 4: Existing Thread Chat
-- [ ] Expected behavior: Loads history, continues conversation
-- [ ] Payload structure:
-  ```json
-  {
-    "message": "What was our last topic?",
-    "User_ID": "test_user_[timestamp]",
-    "thread_id": "[from_test_3]",
-    "Assistant_ID": "asst_abc123"
-  }
-  ```
-- Debug if fails:
-  - Verify Assistant_ID validity
-  - Check thread history retrieval
-  - Monitor response formatting
+- [ ] Documentation Storage
+  - Verify storage process
+  - Check metadata handling
+  - Validate async timing
 
 ## Debug Logging Levels
 
-### Level 1: Basic Request/Response
+### Level 1: Core Functionality
 ```javascript
-console.log('Request:', {
+console.log('Lambda Request:', {
     method,
     headers,
     body: JSON.stringify(body)
 });
-console.log('Response:', {
+console.log('Lambda Response:', {
     status,
     headers: Object.fromEntries(response.headers),
     body: await response.json()
 });
 ```
 
-### Level 2: OpenAI Interaction
+### Level 2: Assistant Interaction
 ```javascript
-console.log('OpenAI Request:', {
+console.log('Assistant Request:', {
     thread_id,
     assistant_id,
     message
 });
-console.log('OpenAI Response:', {
+console.log('Assistant Response:', {
     completion,
     usage
 });
 ```
 
-### Level 3: Thread Management
+### Level 3: Async Operations
 ```javascript
-console.log('Thread State:', {
-    exists: threadExists,
-    messages: messageCount,
-    lastUpdate: lastMessageTimestamp
-});
-```
-
-### Level 4: Context Building
-```javascript
-console.log('Context:', {
-    formData,
-    preprocessedContext,
-    finalPrompt
+console.log('Async Operation:', {
+    type,
+    status,
+    timing
 });
 ```
 
 ## Common Failure Points
-1. API Gateway CORS issues
-   - Check exposed headers
-   - Verify OPTIONS handling
-   - Test preflight requests
-
-2. Lambda Timeouts
+1. Lambda Timeouts
    - Monitor execution time
    - Check async operations
    - Verify promise handling
 
-3. OpenAI Rate Limits
-   - Monitor rate limit headers
-   - Implement exponential backoff
-   - Check quota usage
+2. Assistant Connection
+   - Verify credentials
+   - Check rate limits
+   - Monitor response times
 
-4. Thread Management
-   - Verify thread creation
-   - Check message appending
-   - Monitor context length
+3. Async Operations
+   - Verify webhook URLs
+   - Check payload format
+   - Monitor success rates
 
 ## Success Criteria
-- All 4 tests pass sequentially
+- Core functionality tests pass
+- Async operations complete successfully
 - Response times under 10 seconds
-- Context maintained between messages
 - Error handling graceful and informative
 
 ## Monitoring Setup

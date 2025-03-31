@@ -6,6 +6,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.750.0",
+    "aws-sdk": "^2.1692.0",
+    "dotenv": "^16.4.7",
     "node-fetch": "^2.7.0"
   },
   "scripts": {

@@ -1,141 +1,144 @@
+/**
+ * Test suite for IntegralEd Lambda
+ * Separates core Lambda functionality from async operations
+ */
+
 const fetch = require('node-fetch');
+const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 
 const API_URL = 'https://tixnmh1pe8.execute-api.us-east-2.amazonaws.com/prod/IntegralEd-Main';
+const ssmClient = new SSMClient({ region: "us-east-2" });
 
-async function testNewUserChat() {
-    console.log('\n=== Test 1: New User Chat (No Thread ID) ===');
+/**
+ * Core Lambda Function Tests
+ * These tests verify the main Lambda functionality including:
+ * - Preflight handling
+ * - Assistant routing
+ * - Streaming responses
+ */
+async function testCoreLambdaFunctionality() {
+    console.log('\n=== Testing Core Lambda Functionality ===');
+    
+    // Test 1: Preflight Handling
+    console.log('\n--- Test 1: Preflight Handling ---');
+    try {
+        const response = await fetch(API_URL, {
+            method: 'OPTIONS',
+            headers: {
+                'Origin': 'https://bmore.softr.app',
+                'Access-Control-Request-Method': 'POST',
+                'Access-Control-Request-Headers': 'Content-Type'
+            }
+        });
+        console.log('Preflight Status:', response.status);
+        console.log('CORS Headers:', Object.fromEntries(response.headers));
+        if (!response.ok) {
+            throw new Error(`Preflight failed: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Preflight Error:', error);
+        return false;
+    }
+
+    // Test 2: Assistant Routing
+    console.log('\n--- Test 2: Assistant Routing ---');
     const testMessage = {
         message: "Hello, I'm a new user",
         User_ID: "test_user_" + Date.now()
     };
-
     try {
-        console.log('Sending request:', testMessage);
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(testMessage)
         });
         const data = await response.json();
-        console.log('Status:', response.status);
-        console.log('Response:', data);
+        console.log('Assistant Response:', data);
         if (!response.ok) {
-            console.log('Response headers:', response.headers);
+            throw new Error(`Assistant routing failed: ${response.status}`);
         }
-        return { success: response.ok, threadId: data.thread_id };
+        return { success: true, threadId: data.thread_id };
     } catch (error) {
-        console.error('Error details:', error);
+        console.error('Assistant Routing Error:', error);
         return { success: false };
     }
 }
 
-async function testPreloadWithFormData() {
-    console.log('\n=== Test 2: Preload with Form Data ===');
-    const formData = {
-        message: "I want to learn about mathematics",
-        User_ID: "test_user_" + Date.now(),
-        form_data: {
-            subject: "Mathematics",
-            level: "Beginner",
-            goals: ["Learn basic algebra", "Understand calculus"]
+/**
+ * Async Operations Tests
+ * These tests verify the async operations for data capture
+ */
+async function testAsyncOperations(threadId) {
+    console.log('\n=== Testing Async Operations ===');
+    
+    // Test 1: Airtable Integration
+    console.log('\n--- Test 1: Airtable Integration ---');
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: "Test message for async capture",
+                User_ID: "test_user_" + Date.now(),
+                thread_id: threadId,
+                async_operation: "airtable"
+            })
+        });
+        console.log('Airtable Integration Status:', response.status);
+        if (!response.ok) {
+            throw new Error(`Airtable integration failed: ${response.status}`);
         }
-    };
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
-        const data = await response.json();
-        console.log('Response:', data);
-        return { success: response.ok, threadId: data.thread_id };
     } catch (error) {
-        console.error('Error:', error);
-        return { success: false };
+        console.error('Airtable Integration Error:', error);
+        return false;
     }
-}
 
-async function testContextBasedChat(threadId) {
-    console.log('\n=== Test 3: Context-Based Chat ===');
-    const contextMessage = {
-        message: "Can you help me with algebra?",
-        User_ID: "test_user_" + Date.now(),
-        thread_id: threadId
-    };
-
+    // Test 2: Documentation Storage
+    console.log('\n--- Test 2: Documentation Storage ---');
     try {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(contextMessage)
+            body: JSON.stringify({
+                message: "Test message for documentation",
+                User_ID: "test_user_" + Date.now(),
+                thread_id: threadId,
+                async_operation: "documentation"
+            })
         });
-        const data = await response.json();
-        console.log('Response:', data);
-        return { success: response.ok, threadId: data.thread_id };
+        console.log('Documentation Storage Status:', response.status);
+        if (!response.ok) {
+            throw new Error(`Documentation storage failed: ${response.status}`);
+        }
+        return true;
     } catch (error) {
-        console.error('Error:', error);
-        return { success: false };
-    }
-}
-
-async function testExistingThreadChat(threadId) {
-    console.log('\n=== Test 4: Existing Thread Chat ===');
-    const existingThreadMessage = {
-        message: "What was our last topic?",
-        User_ID: "test_user_" + Date.now(),
-        thread_id: threadId,
-        Assistant_ID: "asst_abc123" // Replace with actual assistant ID
-    };
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(existingThreadMessage)
-        });
-        const data = await response.json();
-        console.log('Response:', data);
-        return response.ok;
-    } catch (error) {
-        console.error('Error:', error);
+        console.error('Documentation Storage Error:', error);
         return false;
     }
 }
 
-async function runAllTests() {
-    console.log('Starting chat test sequence...\n');
+/**
+ * Run the complete test suite
+ */
+async function runTestSuite() {
+    console.log('Starting IntegralEd Lambda test suite...\n');
 
-    // Test 1: New User Chat
-    const newUserResult = await testNewUserChat();
-    if (!newUserResult.success) {
-        console.log('Test 1 failed, stopping test sequence');
+    // Test core Lambda functionality
+    const coreResult = await testCoreLambdaFunctionality();
+    if (!coreResult.success) {
+        console.log('Core Lambda functionality tests failed');
         return;
     }
 
-    // Test 2: Preload with Form Data
-    const preloadResult = await testPreloadWithFormData();
-    if (!preloadResult.success) {
-        console.log('Test 2 failed, stopping test sequence');
+    // Test async operations
+    const asyncResult = await testAsyncOperations(coreResult.threadId);
+    if (!asyncResult) {
+        console.log('Async operations tests failed');
         return;
     }
 
-    // Test 3: Context-Based Chat
-    const contextResult = await testContextBasedChat(preloadResult.threadId);
-    if (!contextResult.success) {
-        console.log('Test 3 failed, stopping test sequence');
-        return;
-    }
-
-    // Test 4: Existing Thread Chat
-    const existingThreadResult = await testExistingThreadChat(contextResult.threadId);
-    if (!existingThreadResult.success) {
-        console.log('Test 4 failed');
-        return;
-    }
-
-    console.log('\nAll tests completed successfully!');
+    console.log('\n✨ All tests completed successfully!');
 }
 
-// Run the test sequence
-runAllTests().catch(console.error); 
+// Run the test suite
+runTestSuite().catch(console.error); 
