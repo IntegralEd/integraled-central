@@ -135,6 +135,30 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'Content-Type'
 };
 
+async function handleHandshake(event) {
+    return {
+        statusCode: 200,
+        headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+            status: 'ok',
+            version: '1.0.0',
+            timestamp: new Date().toISOString(),
+            protocol: {
+                required_fields: {
+                    body: ['message', 'Assistant_ID']
+                },
+                optional_fields: {
+                    body: ['User_ID', 'Thread_ID']
+                },
+                capabilities: ['chat', 'threads', 'streaming']
+            }
+        })
+    };
+}
+
 exports.handler = async (event, context) => {
     console.log("🔄 Received event:", event);
 
@@ -147,76 +171,60 @@ exports.handler = async (event, context) => {
         };
     }
 
-    const { message, thread_id, User_ID, Organization, agent_id } = event.body ? JSON.parse(event.body) : {};
-    
-    if (!message) {
+    // Route to appropriate handler
+    if (event.path === '/handshake') {
+        return handleHandshake(event);
+    }
+
+    // Parse request body
+    const body = event.body ? JSON.parse(event.body) : {};
+    const { message, Assistant_ID, User_ID, Thread_ID } = body;
+
+    if (!message || !Assistant_ID) {
         return {
             statusCode: 400,
             headers: corsHeaders,
-            body: JSON.stringify({ error: "Message is required" })
+            body: JSON.stringify({ 
+                error: "Missing required fields",
+                required: ["message", "Assistant_ID"]
+            })
         };
     }
 
-    // Public access fallback
-    let effectiveAgentId = agent_id;
-    if (!effectiveAgentId) {
-        effectiveAgentId = 'public_demo';
-        console.log('⚠️ No agent_id provided, falling back to public demo agent');
-    }
-
     try {
-        // Get agent-specific parameters
-        console.log(`🔑 Retrieving parameters for agent ${effectiveAgentId}...`);
-        const agentParams = await getAgentParameters(effectiveAgentId);
+        // Get OpenAI key from SSM (single key for all requests)
+        console.log('🔑 Retrieving OpenAI key...');
+        const openaiKey = await getOpenAIKey();
         
-        if (!agentParams.openaiKey || !agentParams.assistantId) {
-            throw new Error(`Required parameters not found for agent ${effectiveAgentId}`);
+        if (!openaiKey) {
+            throw new Error('OpenAI key not found in SSM');
         }
         
-        console.log("✅ Retrieved agent parameters successfully");
+        console.log("✅ Retrieved OpenAI key successfully");
         
-        // Create or retrieve thread
-        let threadId = thread_id;
+        // Use provided thread_id or create new one
+        let effectiveThreadId = Thread_ID;
         
-        if (threadId) {
-            const isValid = await verifyThreadExists(threadId, agentParams.openaiKey);
+        if (effectiveThreadId) {
+            const isValid = await verifyThreadExists(effectiveThreadId, openaiKey);
             if (!isValid) {
-                console.log("⚠️ Provided thread ID is invalid, creating new thread instead");
-                threadId = null;
+                console.log("⚠️ Provided thread ID is invalid, creating new thread");
+                effectiveThreadId = null;
             } else {
-                console.log("🧵 Using existing thread:", threadId);
+                console.log("🧵 Using existing thread:", effectiveThreadId);
             }
         }
         
-        // Add message to thread
+        // Add message to thread using Assistant_ID from request
         const response = await addMessageToThread({
             message,
-            threadId,
-            apiKey: agentParams.openaiKey,
-            assistantId: agentParams.assistantId,
-            orgId: agentParams.orgId,
-            projectId: agentParams.projectId
+            threadId: effectiveThreadId,
+            apiKey: openaiKey,
+            assistantId: Assistant_ID,
+            metadata: {
+                user_id: User_ID
+            }
         });
-        
-        // Log interaction if webhook URL is available
-        if (agentParams.makeWebhook) {
-            await sendToMake({
-                webhookUrl: agentParams.makeWebhook,
-                threadId: response.threadId,
-                userId: User_ID,
-                organization: Organization,
-                messages: response.messages
-            });
-        }
-        
-        // Add save chat logic
-        const shouldSaveChat = message.toLowerCase().includes('save') || 
-                          response.messages.length > 3;
-
-        if (shouldSaveChat) {
-            console.log('💾 Saving chat session...');
-            // TODO: Implement save logic
-        }
 
         return {
             statusCode: 200,

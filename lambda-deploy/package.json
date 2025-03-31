@@ -7,5 +7,9 @@
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.750.0",
     "node-fetch": "^2.7.0"
+  },
+  "scripts": {
+    "test": "node test/test-api.js",
+    "test:make": "node test/test-make-integration.js"
   }
 }
