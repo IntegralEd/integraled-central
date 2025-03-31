@@ -12,65 +12,6 @@ const config = require('./config');
 const { getAgentParameters } = require('./api-client');
 const { v4: uuidv4 } = require('uuid');
 
-async function fetchWithTimeout(url, options, timeoutMs = 8000) {
-    console.log(`🔄 Starting request to ${url} with ${timeoutMs}ms timeout`);
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-        console.log(`⏱️ Request to ${url} timed out after ${timeoutMs}ms`);
-        controller.abort();
-    }, timeoutMs);
-    
-    try {
-        const response = await fetch(url, {
-            ...options,
-            signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        console.log(`✅ Response received from ${url}: ${response.status}`);
-        
-        if (!response.ok) {
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
-        }
-        
-        return response;
-    } catch (error) {
-        clearTimeout(timeoutId);
-        
-        if (error.name === 'AbortError') {
-            console.error(`⏱️ Request to ${url} aborted due to timeout`);
-            throw new Error(`Request timeout after ${timeoutMs}ms`);
-        }
-        
-        console.error(`❌ Error fetching ${url}:`, error.message);
-        throw error;
-    }
-}
-
-async function fetchWithRetry(url, options, maxRetries = 3, timeoutMs = 8000) {
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            console.log(`🔄 Attempt ${attempt}/${maxRetries} for ${url}`);
-            return await fetchWithTimeout(url, options, timeoutMs);
-        } catch (error) {
-            lastError = error;
-            console.error(`❌ Attempt ${attempt} failed:`, error.message);
-            
-            if (attempt < maxRetries) {
-                const delay = Math.min(500 * Math.pow(2, attempt - 1), 3000);
-                console.log(`⏳ Retrying in ${delay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-    }
-    
-    console.error(`❌ All ${maxRetries} attempts failed for ${url}`);
-    throw lastError;
-}
-
 function isHttpRequest(event) {
     return event.requestContext && event.requestContext.http;
 }
