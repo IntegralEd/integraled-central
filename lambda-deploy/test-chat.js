@@ -10,16 +10,21 @@ async function testNewUserChat() {
     };
 
     try {
+        console.log('Sending request:', testMessage);
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(testMessage)
         });
         const data = await response.json();
+        console.log('Status:', response.status);
         console.log('Response:', data);
+        if (!response.ok) {
+            console.log('Response headers:', response.headers);
+        }
         return { success: response.ok, threadId: data.thread_id };
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error details:', error);
         return { success: false };
     }
 }
