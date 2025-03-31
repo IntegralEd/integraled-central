@@ -24,28 +24,6 @@ function getRequestOrigin(event) {
     return isHttpRequest(event) ? (event.headers?.origin || 'unknown') : 'direct-invocation';
 }
 
-async function verifyThreadExists(threadId, openaiApiKey) {
-    if (!threadId) return false;
-    
-    try {
-        console.log(`🔍 Verifying thread: ${threadId}`);
-        const response = await fetch(`https://api.openai.com/v1/threads/${threadId}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${openaiApiKey}`,
-                'Content-Type': 'application/json',
-                'OpenAI-Beta': 'assistants=v2'
-            }
-        });
-        
-        // Return true if thread exists, false otherwise
-        return response.ok;
-    } catch (error) {
-        console.warn(`⚠️ Thread verification failed: ${error.message}`);
-        return false;
-    }
-}
-
 // CORS Headers
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
