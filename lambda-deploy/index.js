@@ -26,10 +26,29 @@ function getRequestOrigin(event) {
 
 // CORS Headers
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': 'https://bmore.softr.app',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400', // 24 hours
+    'Content-Type': 'application/json'
 };
+
+async function handleOptions(event) {
+    // Log the preflight request
+    console.log('Preflight Request:', {
+        method: getRequestMethod(event),
+        headers: event.headers
+    });
+
+    return {
+        statusCode: 200,
+        headers: {
+            ...corsHeaders,
+            'Access-Control-Allow-Origin': event.headers?.origin || corsHeaders['Access-Control-Allow-Origin']
+        },
+        body: ''
+    };
+}
 
 async function handleHandshake(event) {
     return {
@@ -160,18 +179,19 @@ async function checkRunStatus(apiKey, threadId, runId) {
     return status;
 }
 
-// Add a new endpoint for checking thread status
-if (event.rawPath === '/thread-status') {
+async function handleThreadStatus(event) {
     const { thread_id } = event.body ? JSON.parse(event.body) : {};
     
     if (!thread_id) {
         return {
             statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "Thread ID is required" })
         };
     }
     
     try {
+        const { openai_key } = await getAgentParameters();
         const statusResponse = await fetch(`https://api.openai.com/v1/threads/${thread_id}/runs`, {
             method: 'GET',
             headers: {
@@ -188,29 +208,36 @@ if (event.rawPath === '/thread-status') {
         
         return {
             statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify({
                 thread_exists: true,
-                active_runs: activeRuns.length > 0,
-                can_add_message: activeRuns.length === 0
+                active_runs: activeRuns.length,
+                status: activeRuns[0]?.status || 'completed'
             })
         };
     } catch (error) {
+        console.error("❌ Error checking thread status:", error);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: error.message })
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: "Internal server error",
+                message: error.message
+            })
         };
     }
 }
 
-// New endpoint for generating a URL based on the provided conditions
-if (event.rawPath === '/generate-url') {
+async function handleGenerateUrl(event) {
     const { User_ID, Latest_Chat_Thread_ID, Intake_Tags_Txt } = event.body ? JSON.parse(event.body) : {};
     
     if (!User_ID) {
         return {
             statusCode: 400,
+            headers: corsHeaders,
             body: JSON.stringify({ error: "User_ID is required" })
         };
+    }
     
     try {
         const url = IF(
@@ -247,11 +274,13 @@ if (event.rawPath === '/generate-url') {
         
         return {
             statusCode: 200,
+            headers: corsHeaders,
             body: JSON.stringify({ url })
         };
     } catch (error) {
         return {
             statusCode: 500,
+            headers: corsHeaders,
             body: JSON.stringify({ error: error.message })
         };
     }
@@ -284,5 +313,53 @@ const responses = {
                 reason: "Math question detected"
             }
         }
+    }
+};
+
+exports.handler = async (event) => {
+    console.log('Lambda Request:', {
+        method: getRequestMethod(event),
+        headers: event.headers,
+        body: event.body
+    });
+
+    try {
+        // Handle OPTIONS requests first
+        if (getRequestMethod(event) === 'OPTIONS') {
+            return handleOptions(event);
+        }
+
+        // Handle other requests
+        const method = getRequestMethod(event);
+        switch (method) {
+            case 'GET':
+                return handleHandshake(event);
+            case 'POST':
+                // Check if this is a thread status request
+                if (event.rawPath === '/thread-status') {
+                    return handleThreadStatus(event);
+                }
+                // Check if this is a generate-url request
+                if (event.rawPath === '/generate-url') {
+                    return handleGenerateUrl(event);
+                }
+                return handleChat(event);
+            default:
+                return {
+                    statusCode: 405,
+                    headers: corsHeaders,
+                    body: JSON.stringify({ error: 'Method not allowed' })
+                };
+        }
+    } catch (error) {
+        console.error('Lambda Error:', error);
+        return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({
+                error: 'Internal server error',
+                message: error.message
+            })
+        };
     }
 };

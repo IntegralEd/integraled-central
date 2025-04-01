@@ -25,7 +25,7 @@ async function testCoreLambdaFunctionality() {
         const response = await fetch(API_URL, {
             method: 'OPTIONS',
             headers: {
-                'Origin': 'https://bmore.softr.app',
+                'Origin': 'https://recursivelearning.app',
                 'Access-Control-Request-Method': 'POST',
                 'Access-Control-Request-Headers': 'Content-Type'
             }
