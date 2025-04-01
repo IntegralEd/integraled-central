@@ -24,39 +24,57 @@ function getRequestOrigin(event) {
     return isHttpRequest(event) ? (event.headers?.origin || 'unknown') : 'direct-invocation';
 }
 
-// CORS Headers
+// CORS Headers - Base configuration without origin
 const corsHeaders = {
-    'Access-Control-Allow-Origin': 'https://bmore.softr.app',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, OpenAI-Beta',
     'Access-Control-Max-Age': '86400', // 24 hours
     'Content-Type': 'application/json'
 };
 
+// List of allowed origins - primary and secondary
+const allowedOrigins = [
+    'https://recursivelearning.app',  // Primary origin
+    'https://bmore.softr.app',        // Legacy support
+    'https://integraled.github.io'    // Documentation/testing
+];
+
+// Helper to check if origin is allowed
+function isAllowedOrigin(origin) {
+    return allowedOrigins.includes(origin);
+}
+
+// Helper to get CORS headers with proper origin
+function getCorsHeaders(origin) {
+    return {
+        ...corsHeaders,
+        'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : allowedOrigins[0]
+    };
+}
+
 async function handleOptions(event) {
+    const origin = event.headers?.origin;
+    
     // Log the preflight request
     console.log('Preflight Request:', {
         method: getRequestMethod(event),
+        origin: origin,
         headers: event.headers
     });
 
+    // Return CORS headers with validated origin
     return {
         statusCode: 200,
-        headers: {
-            ...corsHeaders,
-            'Access-Control-Allow-Origin': event.headers?.origin || corsHeaders['Access-Control-Allow-Origin']
-        },
+        headers: getCorsHeaders(origin),
         body: ''
     };
 }
 
 async function handleHandshake(event) {
+    const origin = getRequestOrigin(event);
     return {
         statusCode: 200,
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        },
+        headers: getCorsHeaders(origin),
         body: JSON.stringify({
             status: 'ok',
             version: '1.0.0',
@@ -76,6 +94,7 @@ async function handleHandshake(event) {
 
 async function handleChat(event) {
     try {
+        const origin = getRequestOrigin(event);
         const body = JSON.parse(event.body);
         const { message, Assistant_ID, User_ID, Thread_ID } = body;
 
@@ -131,14 +150,14 @@ async function handleChat(event) {
 
         return {
             statusCode: 200,
-            headers: corsHeaders,
+            headers: getCorsHeaders(origin),
             body: JSON.stringify(response)
         };
     } catch (error) {
         console.error("❌ Error processing request:", error);
         return {
             statusCode: 500,
-            headers: corsHeaders,
+            headers: getCorsHeaders(getRequestOrigin(event)),
             body: JSON.stringify({
                 error: "Internal server error",
                 message: error.message
@@ -180,12 +199,13 @@ async function checkRunStatus(apiKey, threadId, runId) {
 }
 
 async function handleThreadStatus(event) {
+    const origin = getRequestOrigin(event);
     const { thread_id } = event.body ? JSON.parse(event.body) : {};
     
     if (!thread_id) {
         return {
             statusCode: 400,
-            headers: corsHeaders,
+            headers: getCorsHeaders(origin),
             body: JSON.stringify({ error: "Thread ID is required" })
         };
     }
@@ -208,7 +228,7 @@ async function handleThreadStatus(event) {
         
         return {
             statusCode: 200,
-            headers: corsHeaders,
+            headers: getCorsHeaders(origin),
             body: JSON.stringify({
                 thread_exists: true,
                 active_runs: activeRuns.length,
@@ -219,7 +239,7 @@ async function handleThreadStatus(event) {
         console.error("❌ Error checking thread status:", error);
         return {
             statusCode: 500,
-            headers: corsHeaders,
+            headers: getCorsHeaders(origin),
             body: JSON.stringify({
                 error: "Internal server error",
                 message: error.message
@@ -316,48 +336,43 @@ const responses = {
     }
 };
 
+// Main handler
 exports.handler = async (event) => {
-    console.log('Lambda Request:', {
-        method: getRequestMethod(event),
-        headers: event.headers,
-        body: event.body
-    });
+    console.log('Received event:', JSON.stringify(event, null, 2));
 
+    // Handle preflight requests
+    if (getRequestMethod(event) === 'OPTIONS') {
+        return handleOptions(event);
+    }
+
+    // Get the request path
+    const path = isHttpRequest(event) ? event.requestContext.http.path : '/';
+    
+    // Route based on path
     try {
-        // Handle OPTIONS requests first
-        if (getRequestMethod(event) === 'OPTIONS') {
-            return handleOptions(event);
-        }
-
-        // Handle other requests
-        const method = getRequestMethod(event);
-        switch (method) {
-            case 'GET':
+        switch (path) {
+            case '/handshake':
                 return handleHandshake(event);
-            case 'POST':
-                // Check if this is a thread status request
-                if (event.rawPath === '/thread-status') {
-                    return handleThreadStatus(event);
-                }
-                // Check if this is a generate-url request
-                if (event.rawPath === '/generate-url') {
-                    return handleGenerateUrl(event);
-                }
+            case '/chat':
                 return handleChat(event);
+            case '/thread-status':
+                return handleThreadStatus(event);
+            case '/generate-url':
+                return handleGenerateUrl(event);
             default:
                 return {
-                    statusCode: 405,
+                    statusCode: 404,
                     headers: corsHeaders,
-                    body: JSON.stringify({ error: 'Method not allowed' })
+                    body: JSON.stringify({ error: 'Not Found' })
                 };
         }
     } catch (error) {
-        console.error('Lambda Error:', error);
+        console.error('Error processing request:', error);
         return {
             statusCode: 500,
             headers: corsHeaders,
             body: JSON.stringify({
-                error: 'Internal server error',
+                error: 'Internal Server Error',
                 message: error.message
             })
         };
